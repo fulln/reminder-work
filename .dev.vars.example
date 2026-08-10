@@ -1,2 +1,5 @@
 # Generate a unique, high-entropy value for real deployments.
 CONTENT_ENCRYPTION_KEY=local-development-only-change-me
+APP_ORIGIN=http://localhost:5173
+AUTH_BASE_URL=https://auth.elemvisual.com
+AUTH_RELYING_WEBSITE_ID=reminder-work

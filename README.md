@@ -30,6 +30,8 @@ The application is a Cloudflare-native modular monolith:
 - Queues for delivery retries and idempotency
 - Cloudflare Email Service for reminder delivery
 - Turnstile for abuse prevention
+- `fl-user-auth` through a Cloudflare Worker Service Binding for Google and
+  GitHub OAuth, site-bound sessions, and logout revocation
 
 Domain, application, infrastructure, and presentation boundaries are enforced in CI.
 The detailed design is available in [docs/architecture.md](docs/architecture.md), and
@@ -56,6 +58,20 @@ The local application is served at `http://127.0.0.1:5173` by default. Local
 development uses Cloudflare's test Turnstile configuration and local Wrangler
 resources; it does not send production email.
 
+To exercise OAuth locally, also run the sibling
+[`fl-user-auth`](https://github.com/fulln/fl-user-auth) Worker. Wrangler connects
+the two processes through the configured `AUTH_SERVICE` binding:
+
+```bash
+cd ../fl-user-auth
+npx wrangler d1 migrations apply fl_user_auth --local
+npx wrangler dev --port 8787
+```
+
+The relying-site contract uses `reminder-work` and accepts only the exact
+`/auth/callback` URLs registered by the authentication service. Session tokens
+are validated server-side and stored only in an HttpOnly, SameSite=Lax cookie.
+
 ## Quality gates
 
 ```bash
@@ -74,8 +90,9 @@ Install the repository hooks with:
 
 ## Cloudflare deployment
 
-Before deployment, replace the placeholder D1 ID and local origin in `wrangler.jsonc`,
-provision D1, Queue, Workflow, Email, and Turnstile resources, and configure secrets:
+Before deployment, replace the placeholder D1 ID in `wrangler.jsonc`, provision D1,
+Queue, Workflow, Email, and Turnstile resources, deploy `fl-user-auth`, and configure
+secrets:
 
 ```bash
 npx wrangler secret put CONTENT_ENCRYPTION_KEY

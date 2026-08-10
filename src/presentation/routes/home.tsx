@@ -3,6 +3,7 @@ import type { ComposerActionData } from "../features/reminder-composer/ReminderC
 import { ReminderComposer } from "../features/reminder-composer/ReminderComposer";
 import { applicationServicesContext } from "../server-context";
 import { TimeRail } from "../ui/TimeRail";
+import { SiteHeader } from "../ui/SiteHeader";
 import type { Route } from "./+types/home";
 import type { ApplicationServices } from "../server-context";
 
@@ -134,12 +135,7 @@ export async function handleComposerAction(
 export default function Home({ actionData }: Route.ComponentProps) {
   return (
     <main id="main-content" className="landing-shell">
-      <header className="site-header">
-        <a className="wordmark" href="/" aria-label="Reminder.work home">
-          Reminder<span>.work</span>
-        </a>
-        <p>Work remembers itself.</p>
-      </header>
+      <SiteHeader context="Work remembers itself." />
 
       <section className="hero" aria-labelledby="hero-title">
         <div className="hero-copy">

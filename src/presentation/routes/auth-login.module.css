@@ -1,0 +1,103 @@
+.shell {
+  margin: 0 auto;
+  max-width: 78rem;
+  min-height: 100vh;
+  padding: var(--space-3);
+}
+
+.main {
+  display: grid;
+  min-height: calc(100vh - 8rem);
+  place-items: center;
+  padding-bottom: var(--space-6);
+}
+
+.card {
+  background: var(--color-surface);
+  border: 0.0625rem solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-instrument);
+  max-width: 28rem;
+  padding: var(--space-4);
+  width: 100%;
+}
+
+.card h1 {
+  font-size: clamp(2rem, 8vw, 3.25rem);
+  margin-bottom: var(--space-2);
+}
+
+.lede,
+.privacyNote,
+.signedIn {
+  color: var(--color-muted);
+}
+
+.providers {
+  display: grid;
+  gap: var(--space-1);
+  margin-block: var(--space-3);
+}
+
+.providerButton {
+  align-items: center;
+  background: var(--color-surface);
+  border: 0.0625rem solid var(--color-border);
+  color: var(--color-ink);
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.providerButton:hover {
+  border-color: var(--color-signal);
+}
+
+.providerMark {
+  align-items: center;
+  border: 0.0625rem solid var(--color-border);
+  border-radius: 50%;
+  display: inline-flex;
+  font-family: var(--font-display);
+  height: 1.75rem;
+  justify-content: center;
+  width: 1.75rem;
+}
+
+.privacyNote {
+  border-top: 0.0625rem solid var(--color-border);
+  font-size: 0.8125rem;
+  margin: var(--space-3) 0 0;
+  padding-top: var(--space-2);
+}
+
+.error {
+  background: color-mix(in srgb, var(--color-error) 8%, var(--color-surface));
+  border-left: 0.1875rem solid var(--color-error);
+  color: var(--color-error);
+  padding: var(--space-1) var(--space-2);
+}
+
+.homeLink {
+  display: inline-block;
+  font-weight: 600;
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 48rem) {
+  .shell {
+    padding: var(--space-2);
+  }
+
+  .main {
+    align-items: start;
+    min-height: auto;
+    padding-top: var(--space-4);
+  }
+
+  .card {
+    border-radius: var(--radius-medium);
+    box-shadow: none;
+    padding: var(--space-3) var(--space-2);
+  }
+}

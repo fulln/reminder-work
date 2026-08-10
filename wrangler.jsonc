@@ -7,6 +7,12 @@
   "assets": {
     "binding": "ASSETS",
   },
+  "services": [
+    {
+      "binding": "AUTH_SERVICE",
+      "service": "fl-user-auth",
+    },
+  ],
   "d1_databases": [
     {
       "binding": "DB",
@@ -44,7 +50,9 @@
     },
   ],
   "vars": {
-    "APP_ORIGIN": "http://localhost:5173",
+    "APP_ORIGIN": "https://reminder.work",
+    "AUTH_BASE_URL": "https://auth.elemvisual.com",
+    "AUTH_RELYING_WEBSITE_ID": "reminder-work",
     "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
     "EMAIL_FROM": "reminders@reminder.work",
   },

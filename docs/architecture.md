@@ -327,6 +327,9 @@ flowchart LR
     USER["User / Search crawler"] --> EDGE["Cloudflare DNS / TLS / CDN / WAF"]
     EDGE --> APP["Reminder Worker\nSSR + Static Assets + API"]
     APP --> TURN["Turnstile"]
+    APP -->|"Service Binding"| AUTH["fl-user-auth Worker"]
+    AUTH --> AUTHDB["Auth D1"]
+    AUTH --> PROVIDERS["Google / GitHub OAuth"]
     APP --> D1["D1 source of truth"]
     APP --> WF["Reminder Workflow"]
     WF --> D1
@@ -361,6 +364,9 @@ env.AUTH_EMAIL_QUEUE
 env.EMAIL_EVENTS_QUEUE
 env.EMAIL
 env.ASSETS
+env.AUTH_SERVICE
+env.AUTH_BASE_URL
+env.AUTH_RELYING_WEBSITE_ID
 env.TURNSTILE_SECRET
 env.DATA_ENCRYPTION_KEY_V1
 ```
@@ -369,13 +375,12 @@ env.DATA_ENCRYPTION_KEY_V1
 
 ### 7.2 数据所有权
 
-D1 是唯一业务事实源：
+Reminder D1 是提醒业务事实源；身份、Provider 绑定和共享 Session 由
+`fl-user-auth` 的独立 Auth D1 持有。两个数据库不做跨库事务，通过不透明
+session token 的在线校验形成明确边界：
 
 | 表 | 核心字段 | 关键约束/索引 |
 |---|---|---|
-| `users` | id, locale, time_zone, status | PK id |
-| `email_identities` | user_id, email_hash, ciphertext, verified_at, status | UNIQUE email_hash |
-| `sessions` | user_id, token_hash, expires_at | UNIQUE token_hash |
 | `verification_tokens` | identity_id, purpose, token_hash, expires_at, consumed_at | UNIQUE token_hash |
 | `reminders` | owner, recipient, kind, status, version, encrypted content, schedule_json, next_fire_at | owner/status、status/next_fire |
 | `occurrences` | reminder_id, version, logical_at, offset, status | UNIQUE reminder/logical_at/offset |
@@ -601,8 +606,10 @@ type ReminderPreset = {
 ### 11.1 身份
 
 - 匿名用户验证邮箱后可通过 manage token 管理单条 Reminder。
-- 注册用户使用 15 分钟、单次消费的 Magic Link。
-- D1 只保存 token hash 和 opaque session hash。
+- 注册用户通过共享 `fl-user-auth` Worker 使用 Google 或 GitHub OAuth。
+- Reminder Worker 通过 Cloudflare Service Binding 调用 OAuth start、session validate 和 logout；不持有 Provider client secret。
+- OAuth callback 只接受已登记的 `/auth/callback`，收到 token 后立即在线校验、写入 Cookie，并通过 302 清理 URL。
+- Auth D1 只保存 session token hash；Reminder D1 不复制共享身份或 session。
 - Session cookie：Secure、HttpOnly、SameSite=Lax、host-only。
 - Cloudflare Access 只保护内部管理入口，不用于消费者认证。
 
@@ -717,9 +724,10 @@ reminders/
 ├── src/
 │   ├── worker.ts
 │   ├── presentation/
-│   │   ├── routes/
+│   │   ├── routes/auth-*.ts
 │   │   └── reminder-composer/
 │   ├── application/
+│   │   ├── ports/auth-service.ts
 │   │   ├── create-reminder.ts
 │   │   ├── change-reminder.ts
 │   │   ├── acknowledge-reminder.ts
@@ -739,6 +747,7 @@ reminders/
 │       ├── workflows/
 │       ├── queues/
 │       ├── email/
+│       ├── auth/fl-user-auth-client.ts
 │       ├── crypto/
 │       └── observability/
 ├── tests/

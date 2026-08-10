@@ -9,6 +9,8 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
+import { readAuthSessionToken } from "./auth-session.server";
+import { applicationServicesContext } from "./server-context";
 import "../styles/fonts.css";
 import "../styles/tokens.css";
 import "../styles/reset.css";
@@ -17,11 +19,18 @@ export const links: Route.LinksFunction = () => [
   { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
 ];
 
-export function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const services = context.get(applicationServicesContext);
+  const sessionToken = readAuthSessionToken(request.headers.get("cookie"));
+  const session =
+    sessionToken === null
+      ? null
+      : await services.auth.validateSession(sessionToken).catch(() => null);
   return {
     lang: new URL(request.url).pathname.startsWith("/zh/")
       ? ("zh-CN" as const)
       : ("en" as const),
+    user: session?.user ?? null,
   };
 }
 

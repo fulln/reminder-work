@@ -5,7 +5,8 @@ export class LocalTurnstileAdapter implements TurnstilePort {
 
   verify(token: string): Promise<boolean> {
     return Promise.resolve(
-      this.appOrigin.startsWith("http://localhost") && token === "test-pass",
+      /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(this.appOrigin) &&
+        token === "test-pass",
     );
   }
 }

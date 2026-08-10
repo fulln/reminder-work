@@ -6,10 +6,14 @@ import type { CreateReminderAccepted } from "../application/use-cases/create-rem
 import type { ReviewReminderResult } from "../application/use-cases/review-reminder";
 import type { ReminderView } from "../application/use-cases/get-reminder-view";
 import type { ManageReminderInput } from "../application/use-cases/manage-reminder/manage-reminder";
+import type { AuthServicePort } from "../application/ports/auth-service";
 
 export interface ApplicationServices {
   readonly requestId: string;
   readonly showLocalVerificationPreview: boolean;
+  readonly auth: AuthServicePort;
+  readonly authCallbackUrl: string;
+  readonly secureAuthCookie: boolean;
   reviewReminder(input: ReminderDraftInput): ReviewReminderResult;
   createReminder(
     input: ReminderDraftInput,

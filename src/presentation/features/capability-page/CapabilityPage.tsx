@@ -5,6 +5,7 @@ import type {
   CapabilityPreset,
 } from "../../../content/capability-presets";
 import { TimeRail } from "../../ui/TimeRail";
+import { SiteHeader } from "../../ui/SiteHeader";
 import styles from "./CapabilityPage.module.css";
 
 export function CapabilityPage({
@@ -20,14 +21,14 @@ export function CapabilityPage({
   const peerHref = locale === "en" ? `/zh/${preset.slug}` : `/${preset.slug}`;
   return (
     <main id="main-content" className="landing-shell">
-      <header className="site-header">
-        <a className="wordmark" href="/" aria-label="Reminder.work home">
-          Reminder<span>.work</span>
-        </a>
-        <a href={peerHref} hrefLang={locale === "en" ? "zh-CN" : "en"}>
-          {locale === "en" ? "中文" : "English"}
-        </a>
-      </header>
+      <SiteHeader
+        locale={locale}
+        utilityLink={{
+          href: peerHref,
+          label: locale === "en" ? "中文" : "English",
+          hrefLang: locale === "en" ? "zh-CN" : "en",
+        }}
+      />
       <section className="hero" aria-labelledby="capability-title">
         <div className="hero-copy">
           <p className="eyebrow">{content.eyebrow}</p>

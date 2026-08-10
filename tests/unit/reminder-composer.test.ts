@@ -54,6 +54,13 @@ describe("composer response privacy", () => {
     const services: ApplicationServices = {
       requestId: "request-1",
       showLocalVerificationPreview: false,
+      auth: {
+        startOAuth: () => Promise.reject(new Error("not used")),
+        validateSession: () => Promise.resolve(null),
+        logout: () => Promise.resolve(),
+      },
+      authCallbackUrl: "http://localhost:5173/auth/callback",
+      secureAuthCookie: false,
       reviewReminder,
       createReminder: () =>
         Promise.resolve({

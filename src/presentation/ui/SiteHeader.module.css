@@ -1,0 +1,68 @@
+.controls {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.context {
+  color: var(--color-muted);
+}
+
+.identity {
+  color: var(--color-muted);
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.authLink,
+.utilityLink,
+.logoutButton {
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.authLink {
+  border: 0.0625rem solid var(--color-border);
+  border-radius: 999rem;
+  color: var(--color-ink);
+  padding: 0.4rem 0.8rem;
+  text-decoration: none;
+}
+
+.logoutForm {
+  margin: 0;
+}
+
+.logoutButton {
+  background: transparent;
+  color: var(--color-muted);
+  min-height: auto;
+  padding: 0;
+  width: auto;
+}
+
+.logoutButton:hover,
+.authLink:hover {
+  color: var(--color-signal);
+}
+
+@media (max-width: 48rem) {
+  .controls {
+    gap: var(--space-1);
+  }
+
+  .context,
+  .identity {
+    display: none;
+  }
+
+  .utilityLink,
+  .authLink,
+  .logoutButton {
+    font-size: 0.8125rem;
+  }
+}

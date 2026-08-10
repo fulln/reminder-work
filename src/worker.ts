@@ -10,6 +10,7 @@ import { getReminderView } from "./application/use-cases/get-reminder-view";
 import { manageReminder } from "./application/use-cases/manage-reminder/manage-reminder";
 import { unsubscribe } from "./application/use-cases/unsubscribe";
 import { WebCryptoContentProtector } from "./infrastructure/cloudflare/crypto/content-protector";
+import { FlUserAuthClient } from "./infrastructure/cloudflare/auth/fl-user-auth-client";
 import { D1ReminderRepository } from "./infrastructure/cloudflare/d1/reminder-repository";
 import { D1SuppressionRepository } from "./infrastructure/cloudflare/d1/suppression-repository";
 import { D1DeliveryClaimRepository } from "./infrastructure/cloudflare/d1/delivery-claim-repository";
@@ -65,17 +66,25 @@ export class ReminderWorkflow extends WorkflowEntrypoint<
 export default {
   async fetch(request: Request, env: CloudflareEnv): Promise<Response> {
     const requestId = crypto.randomUUID();
+    const requestOrigin = new URL(request.url).origin;
     const clock = { now: () => new Date() };
     const reminders = new D1ReminderRepository(env.DB);
     const tokens = new D1TokenPort(env.DB);
     const suppressions = new D1SuppressionRepository(env.DB);
     const turnstile =
       env.TURNSTILE_SECRET_KEY === undefined
-        ? new LocalTurnstileAdapter(env.APP_ORIGIN)
+        ? new LocalTurnstileAdapter(requestOrigin)
         : new CloudflareTurnstileAdapter(env.TURNSTILE_SECRET_KEY);
     const contentProtector = new WebCryptoContentProtector(
       env.CONTENT_ENCRYPTION_KEY,
     );
+    const auth = new FlUserAuthClient({
+      baseUrl: env.AUTH_BASE_URL,
+      relyingWebsiteId: env.AUTH_RELYING_WEBSITE_ID,
+      fetcher: (input, init) =>
+        env.AUTH_SERVICE.fetch(new Request(input, init)),
+    });
+    const authCallbackUrl = new URL("/auth/callback", requestOrigin).toString();
     const dependencies = {
       clock,
       ids: { create: () => crypto.randomUUID() },
@@ -89,7 +98,10 @@ export default {
     context.set(applicationServicesContext, {
       requestId,
       showLocalVerificationPreview:
-        /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(env.APP_ORIGIN),
+        /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(requestOrigin),
+      auth,
+      authCallbackUrl,
+      secureAuthCookie: new URL(requestOrigin).protocol === "https:",
       reviewReminder,
       createReminder: (input) => createReminder(dependencies, input, requestId),
       verifyReminder: (token) =>

@@ -4,6 +4,7 @@
   "main": "src/worker.ts",
   "compatibility_date": "2026-08-08",
   "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
   "assets": {
     "binding": "ASSETS",
   },
@@ -17,7 +18,7 @@
     {
       "binding": "DB",
       "database_name": "reminder-work",
-      "database_id": "00000000-0000-0000-0000-000000000001",
+      "database_id": "63fccc73-2c29-4800-9f59-9e62ded066d2",
       "migrations_dir": "migrations",
     },
   ],

@@ -34,11 +34,11 @@
     "lint": "eslint src tests",
     "architecture:check": "depcruise src --config .dependency-cruiser.cjs && node scripts/check-architecture.mjs && node scripts/check-design-tokens.mjs && node scripts/check-contract-versions.mjs && node scripts/check-governed-exceptions.mjs && ./scripts/validate-governance.sh",
     "guard:staged": "npm run architecture:check && npm run typecheck",
-    "typecheck": "react-router typegen && tsc --noEmit",
+    "typecheck": "npm run cf-typegen && react-router typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "verify": "npm run cf-typegen && npm run format:check && npm run lint && npm run architecture:check && npm run typecheck && npm run test && npm run build && npm run performance:check && npm run db:migrate:local && npm run test:e2e"
+    "verify": "npm run typecheck && npm run format:check && npm run lint && npm run architecture:check && npm run test && npm run build && npm run performance:check && npm run db:migrate:local && npm run test:e2e"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.6",

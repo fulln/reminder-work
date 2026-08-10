@@ -1,0 +1,9 @@
+{
+  "ruleId": "ARCH-DOMAIN-001",
+  "owner": "platform",
+  "rationale": "Temporary fixture",
+  "risk": "Dependency inversion can drift",
+  "expiresWhen": "2020-01-01",
+  "removalTask": "REM-999",
+  "affectedPaths": ["**/*"]
+}

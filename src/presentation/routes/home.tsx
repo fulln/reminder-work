@@ -1,0 +1,178 @@
+import type { ReminderDraftInput } from "../../application/contracts/create-reminder";
+import type { ComposerActionData } from "../features/reminder-composer/ReminderComposer";
+import { ReminderComposer } from "../features/reminder-composer/ReminderComposer";
+import { applicationServicesContext } from "../server-context";
+import { TimeRail } from "../ui/TimeRail";
+import type { Route } from "./+types/home";
+import type { ApplicationServices } from "../server-context";
+
+export const meta: Route.MetaFunction = () => [
+  { title: "Reminder.work — Free Online Reminders for Work" },
+  {
+    name: "description",
+    content:
+      "Create clear online reminders for tasks, meetings, and deadlines. Review the exact time before anything is sent.",
+  },
+];
+
+export function draftFromForm(form: FormData): ReminderDraftInput {
+  const disambiguation = form.get("disambiguation");
+  const stringField = (name: string): string => {
+    const value = form.get(name);
+    return typeof value === "string" ? value : "";
+  };
+  const recurrenceKind = stringField("recurrenceKind");
+  const recurrenceInterval = Number(stringField("recurrenceInterval") || "1");
+  const localDate = stringField("localDate");
+  const recurrence =
+    recurrenceKind === "daily"
+      ? { kind: "daily" as const, interval: recurrenceInterval }
+      : recurrenceKind === "weekly"
+        ? {
+            kind: "weekly" as const,
+            interval: recurrenceInterval,
+            weekdays: [Math.max(1, new Date(`${localDate}T12:00:00`).getDay())],
+          }
+        : recurrenceKind === "monthly"
+          ? {
+              kind: "monthly" as const,
+              interval: recurrenceInterval,
+              dayOfMonth: Number(localDate.slice(-2)),
+              monthEndPolicy: "last-day" as const,
+            }
+          : null;
+  return {
+    schemaVersion: 1,
+    title: stringField("title"),
+    recipientEmail: stringField("recipientEmail"),
+    localDate,
+    localTime: stringField("localTime"),
+    timeZone: stringField("timeZone"),
+    turnstileToken: stringField("turnstileToken"),
+    recurrence,
+    leadOffsetsMinutes: form
+      .getAll("leadOffsetsMinutes")
+      .flatMap((value) =>
+        typeof value === "string" && /^\d+$/.test(value) ? [Number(value)] : [],
+      ),
+    ...(disambiguation === "earlier" || disambiguation === "later"
+      ? { disambiguation }
+      : {}),
+  };
+}
+
+function valuesFromDraft(
+  draft: ReminderDraftInput,
+): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    Object.entries(draft).map(([key, value]) => [
+      key,
+      typeof value === "string" || typeof value === "number"
+        ? String(value)
+        : JSON.stringify(value ?? ""),
+    ]),
+  );
+}
+
+export async function action({
+  request,
+  context,
+}: Route.ActionArgs): Promise<ComposerActionData | null> {
+  const form = await request.formData();
+  return handleComposerAction(form, context.get(applicationServicesContext));
+}
+
+export async function handleComposerAction(
+  form: FormData,
+  services: ApplicationServices,
+): Promise<ComposerActionData | null> {
+  const intentValue = form.get("intent");
+  const intent = typeof intentValue === "string" ? intentValue : "review";
+  const draft = draftFromForm(form);
+  if (intent === "edit") {
+    return {
+      stage: "input-error",
+      fields: {},
+      values: valuesFromDraft(draft),
+    };
+  }
+
+  if (intent === "review") {
+    const result = services.reviewReminder(draft);
+    return result.ok
+      ? { stage: "review", reminder: result.value }
+      : {
+          stage: "input-error",
+          fields: result.fields,
+          values: result.values,
+        };
+  }
+
+  const result = await services.createReminder(draft);
+  return result.ok
+    ? {
+        stage: "created",
+        result: {
+          state: result.data.state,
+          maskedRecipient: result.data.maskedRecipient,
+          expiresAt: result.data.expiresAt,
+          ...(services.showLocalVerificationPreview
+            ? { verificationToken: result.data.verificationToken }
+            : {}),
+        },
+      }
+    : {
+        stage: "create-error",
+        message: result.error.form ?? "The reminder could not be created.",
+        ...(result.error.fields === undefined
+          ? {}
+          : { fields: result.error.fields }),
+        values: valuesFromDraft(draft),
+      };
+}
+
+export default function Home({ actionData }: Route.ComponentProps) {
+  return (
+    <main id="main-content" className="landing-shell">
+      <header className="site-header">
+        <a className="wordmark" href="/" aria-label="Reminder.work home">
+          Reminder<span>.work</span>
+        </a>
+        <p>Work remembers itself.</p>
+      </header>
+
+      <section className="hero" aria-labelledby="hero-title">
+        <div className="hero-copy">
+          <p className="eyebrow">Free online reminders</p>
+          <h1 id="hero-title">Set it once. Return when it matters.</h1>
+          <p className="hero-lede">
+            Create a precise reminder for a task, meeting, or deadline. We show
+            the local time, time zone, and UTC instant before anything is sent.
+          </p>
+          <ul className="trust-list" aria-label="Product promises">
+            <li>No account required</li>
+            <li>Email verification before delivery</li>
+            <li>Cancel or unsubscribe in one click</li>
+          </ul>
+        </div>
+
+        <div className="instrument">
+          <div className="instrument-head">
+            <span>New reminder</span>
+            <span className="status-dot">
+              {actionData?.stage === "review" ? "Review" : "Draft"}
+            </span>
+          </div>
+          <TimeRail
+            activeStep={
+              actionData?.stage === "review" ? "scheduled" : "defined"
+            }
+          />
+          <div className="composer-slot">
+            <ReminderComposer actionData={actionData ?? undefined} />
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}

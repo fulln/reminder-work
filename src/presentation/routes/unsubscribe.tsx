@@ -1,0 +1,33 @@
+import { Form } from "react-router";
+
+import { applicationServicesContext } from "../server-context";
+import type { Route } from "./+types/unsubscribe";
+
+export const meta: Route.MetaFunction = () => [
+  { title: "Unsubscribe — Reminder.work" },
+  { name: "robots", content: "noindex, nofollow" },
+];
+
+export function action({ params, context }: Route.ActionArgs) {
+  return context.get(applicationServicesContext).unsubscribe(params.token);
+}
+
+export default function UnsubscribeRoute({ actionData }: Route.ComponentProps) {
+  const done = actionData?.ok === true;
+  return (
+    <main id="main-content" className="error-page">
+      <p className="eyebrow">Email preferences</p>
+      <h1>{done ? "You are unsubscribed" : "Stop reminder emails"}</h1>
+      <p>
+        {done
+          ? "This recipient will not receive further reminder delivery."
+          : "This also cancels the reminder linked to this email."}
+      </p>
+      {!done ? (
+        <Form method="post">
+          <button type="submit">Unsubscribe</button>
+        </Form>
+      ) : null}
+    </main>
+  );
+}

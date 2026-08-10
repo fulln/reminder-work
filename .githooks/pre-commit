@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+
+if ! git diff --cached --name-only --diff-filter=ACMR -- . | grep -q .; then
+  exit 0
+fi
+
+blocked='(^|/)(\.env($|\.)|\.dev\.vars($|\.)|[^/]+\.(pem|key|p12|pfx))$'
+if git diff --cached --name-only --diff-filter=ACMR -- . | grep -E "$blocked"; then
+  echo "pre-commit: refusing to commit a likely secret file" >&2
+  exit 1
+fi
+
+git diff --cached --check -- .
+"$repo_root/scripts/validate-governance.sh"
+
+if [[ -f "$repo_root/package.json" ]]; then
+  staged_files="$(git diff --cached --name-only --diff-filter=ACMR -- . | paste -sd, -)"
+  (
+    cd "$repo_root"
+    export GUARD_FILES="$staged_files"
+    npm run guard:staged --if-present
+  )
+fi

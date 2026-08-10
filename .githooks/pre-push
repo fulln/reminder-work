@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+
+"$repo_root/scripts/validate-governance.sh"
+
+if [[ -f "$repo_root/package.json" ]]; then
+  (
+    cd "$repo_root"
+    npm run verify --if-present
+  )
+fi

@@ -1,0 +1,48 @@
+.shell {
+  width: min(100% - var(--space-3), 48rem);
+  margin: var(--space-4) auto;
+  padding: clamp(var(--space-3), 6vw, var(--space-5));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-instrument);
+}
+
+.state {
+  display: inline-flex;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-large);
+  color: var(--color-signal);
+  background: color-mix(in srgb, var(--color-signal) 9%, var(--color-surface));
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.time {
+  margin-block: var(--space-3);
+  color: var(--color-muted);
+  font-family: var(--font-time);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-block-start: var(--space-4);
+}
+
+.actions form,
+.actions button {
+  width: 100%;
+}
+
+.actions label {
+  display: grid;
+  gap: var(--space-1);
+}
+
+@media (max-width: 32rem) {
+  .actions {
+    grid-template-columns: 1fr;
+  }
+}

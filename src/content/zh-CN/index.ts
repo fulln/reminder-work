@@ -1,0 +1,51 @@
+export const chineseCapabilityContent = {
+  online: {
+    eyebrow: "无需下载的提醒工具",
+    heading: "一分钟内创建在线提醒",
+    lede: "选择准确的本地时间，验证邮箱，并通过安全链接随时修改，无需注册账号。",
+    example: "示例：明天 09:00 提醒我复核季度计划。",
+    title: "在线提醒工具——免费、快速、无需注册 | Reminder.work",
+    description:
+      "免费创建在线提醒，确认时区与准确时间，通过邮箱验证后启用，无需安装应用。",
+  },
+  email: {
+    eyebrow: "经过验证的邮件送达",
+    heading: "创建值得信赖的邮件提醒",
+    lede: "启用前核对收件人、提醒时刻、授权与一键退订路径。",
+    example: "示例：状态更新前提醒项目负责人。",
+    title: "邮箱提醒——验证后安全发送 | Reminder.work",
+    description: "安排安全的邮箱提醒，支持收件人验证、送达控制和便捷退订。",
+  },
+  recurring: {
+    eyebrow: "按可靠节奏重复",
+    heading: "创建尊重本地时间的周期提醒",
+    lede: "将 IANA 时区与重复规则保存在一起，让每周和每月提醒正确跨越夏令时变化。",
+    example: "示例：每周五 16:00 提醒提交周报。",
+    title: "周期提醒——每日、每周或每月 | Reminder.work",
+    description: "创建每日、每周或每月周期提醒，使用可跨夏令时的明确时区。",
+  },
+  meeting: {
+    eyebrow: "提前做好准备",
+    heading: "创建带提前量的会议提醒",
+    lede: "同时设置会议时刻与准备窗口，保存前核对本地时间和 UTC 时间。",
+    example: "示例：客户会议前 30 分钟准备议程。",
+    title: "会议提醒——提前通知与准确时区 | Reminder.work",
+    description: "创建带提前通知的会议提醒，核对准确时区，并通过安全链接管理。",
+  },
+  deadline: {
+    eyebrow: "守住截止日期",
+    heading: "用多个检查点创建截止日期提醒",
+    lede: "围绕同一个截止日期添加多个提前提醒，避免重要工作只依赖一次通知。",
+    example: "示例：申报截止前七天和一天分别提醒。",
+    title: "截止日期提醒——支持多个提前通知 | Reminder.work",
+    description: "创建带多个提前量、准确时区核对与完成状态的截止日期提醒。",
+  },
+  "follow-up": {
+    eyebrow: "把事情真正闭环",
+    heading: "创建可确认完成的跟进提醒",
+    lede: "保持下一步行动清晰，并通过安全链接完成、稍后提醒、改期或取消。",
+    example: "示例：下周二上午跟进方案反馈。",
+    title: "跟进提醒——完成、稍后提醒与改期 | Reminder.work",
+    description: "创建跟进提醒，支持完成、稍后提醒、改期、取消和退订。",
+  },
+} as const;

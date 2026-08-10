@@ -1,0 +1,30 @@
+:root {
+  color-scheme: light;
+  --color-canvas: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-ink: #111827;
+  --color-muted: #667085;
+  --color-signal: #2457ff;
+  --color-due: #d97706;
+  --color-complete: #138a5b;
+  --color-error: #b42318;
+  --color-border: #d9dde5;
+  --color-focus: #1746db;
+  --color-disabled: #98a2b3;
+  --font-display: "Sora", "Avenir Next", sans-serif;
+  --font-interface: "IBM Plex Sans", "Avenir", sans-serif;
+  --font-time: "IBM Plex Mono", "SFMono-Regular", monospace;
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-5: 3rem;
+  --space-6: 4rem;
+  --radius-small: 0.5rem;
+  --radius-medium: 1rem;
+  --radius-large: 1.5rem;
+  --shadow-instrument: 0 1.5rem 4rem rgb(17 24 39 / 10%);
+  --motion-fast: 120ms;
+  --motion-normal: 180ms;
+  --motion-slow: 220ms;
+}

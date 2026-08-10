@@ -1,0 +1,55 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "reminder-work",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-08-08",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "reminder-work",
+      "database_id": "00000000-0000-0000-0000-000000000001",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "REMINDER_QUEUE",
+        "queue": "reminder-delivery",
+      },
+    ],
+    "consumers": [
+      {
+        "queue": "reminder-delivery",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+      },
+    ],
+  },
+  "workflows": [
+    {
+      "name": "reminder-schedule",
+      "binding": "REMINDER_WORKFLOW",
+      "class_name": "ReminderWorkflow",
+    },
+  ],
+  "send_email": [
+    {
+      "name": "EMAIL",
+    },
+  ],
+  "vars": {
+    "APP_ORIGIN": "http://localhost:5173",
+    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+    "EMAIL_FROM": "reminders@reminder.work",
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+  },
+}

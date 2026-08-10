@@ -1,0 +1,12 @@
+.example {
+  margin-block: var(--space-3);
+  padding: var(--space-2);
+  border-inline-start: 0.25rem solid var(--color-signal);
+  background: color-mix(in srgb, var(--color-signal) 7%, var(--color-surface));
+  font-family: var(--font-time);
+}
+
+.languageLink {
+  display: inline-block;
+  margin-block-start: var(--space-3);
+}

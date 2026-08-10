@@ -1,0 +1,2 @@
+# Generate a unique, high-entropy value for real deployments.
+CONTENT_ENCRYPTION_KEY=local-development-only-change-me

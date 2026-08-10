@@ -1,0 +1,78 @@
+{
+  "name": "reminder-work",
+  "version": "0.1.0",
+  "description": "A Cloudflare-native web app for email, recurring, meeting, and deadline reminders.",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fulln/reminder-work.git"
+  },
+  "homepage": "https://reminder.work",
+  "keywords": [
+    "reminder",
+    "cloudflare-workers",
+    "cloudflare-d1",
+    "react-router",
+    "typescript"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "react-router build",
+    "dev": "react-router dev",
+    "start": "vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "sitemap": "node scripts/generate-sitemap.mjs",
+    "performance:check": "node scripts/check-performance-budget.mjs",
+    "cf-typegen": "wrangler types worker-configuration.d.ts",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\" \"scripts/**/*.{mjs,js}\" \"*.{json,jsonc,ts,js,cjs}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\" \"scripts/**/*.{mjs,js}\" \"*.{json,jsonc,ts,js,cjs}\"",
+    "lint": "eslint src tests",
+    "architecture:check": "depcruise src --config .dependency-cruiser.cjs && node scripts/check-architecture.mjs && node scripts/check-design-tokens.mjs && node scripts/check-contract-versions.mjs && node scripts/check-governed-exceptions.mjs && ./scripts/validate-governance.sh",
+    "guard:staged": "npm run architecture:check && npm run typecheck",
+    "typecheck": "react-router typegen && tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "verify": "npm run format:check && npm run lint && npm run architecture:check && npm run typecheck && npm run test && npm run build && npm run performance:check && npm run db:migrate:local && npm run test:e2e"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.2.6",
+    "@fontsource/ibm-plex-sans": "^5.2.7",
+    "@fontsource/sora": "^5.2.7",
+    "@js-temporal/polyfill": "^0.5.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router": "^8.3.0",
+    "zod": "^4.1.12",
+    "isbot": "^5"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
+    "@cloudflare/vite-plugin": "^1.51.1",
+    "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.55.1",
+    "@react-router/dev": "^8.3.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^22.18.6",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "dependency-cruiser": "^18.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.4.0",
+    "jsdom": "^27.0.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.44.1",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10",
+    "wrangler": "^4.120.0"
+  }
+}

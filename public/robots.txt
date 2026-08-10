@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /verify/
+Disallow: /manage/
+Disallow: /unsubscribe/
+
+Sitemap: https://reminder.work/sitemap.xml

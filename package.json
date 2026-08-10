@@ -38,7 +38,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "verify": "npm run format:check && npm run lint && npm run architecture:check && npm run typecheck && npm run test && npm run build && npm run performance:check && npm run db:migrate:local && npm run test:e2e"
+    "verify": "npm run cf-typegen && npm run format:check && npm run lint && npm run architecture:check && npm run typecheck && npm run test && npm run build && npm run performance:check && npm run db:migrate:local && npm run test:e2e"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.6",

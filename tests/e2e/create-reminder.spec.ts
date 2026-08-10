@@ -1,4 +1,18 @@
 import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+
+async function revealScheduleDetails(page: Page) {
+  const toggle = page.getByRole("button", { name: /Schedule details/ });
+  if (!(await toggle.isVisible())) return;
+
+  await expect(async () => {
+    if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+      await toggle.click();
+    }
+
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  }).toPass();
+}
 
 test("reviews exact time then reaches email verification", async ({ page }) => {
   await page.goto("/");
@@ -11,6 +25,7 @@ test("reviews exact time then reaches email verification", async ({ page }) => {
   await page.getByLabel("Email address").fill("owner@example.com");
   await page.getByLabel("Date").fill("2026-08-11");
   await page.getByLabel("Time", { exact: true }).fill("09:00");
+  await revealScheduleDetails(page);
   await page
     .getByLabel("Time zone", { exact: true })
     .selectOption("Asia/Shanghai");

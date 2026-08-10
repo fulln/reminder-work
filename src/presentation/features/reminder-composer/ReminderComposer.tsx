@@ -1,5 +1,5 @@
 import { Form, useNavigation } from "react-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { CreateReminderAccepted } from "../../../application/use-cases/create-reminder";
 import type { ReviewedReminder } from "../../../application/use-cases/review-reminder";
@@ -137,6 +137,7 @@ export function ReminderComposer({
   const hasErrors =
     actionData?.stage === "input-error" || actionData?.stage === "create-error";
   const errorSummary = useRef<HTMLDivElement>(null);
+  const [scheduleExpanded, setScheduleExpanded] = useState(false);
 
   useEffect(() => {
     if (hasErrors) errorSummary.current?.focus();
@@ -238,7 +239,7 @@ export function ReminderComposer({
         </div>
       ) : null}
 
-      <fieldset>
+      <fieldset className={[styles.sectionField, styles.whatSection].join(" ")}>
         <legend>01 · What</legend>
         <label htmlFor="title">Reminder</label>
         <input
@@ -258,7 +259,7 @@ export function ReminderComposer({
         <FieldError actionData={actionData} name="title" />
       </fieldset>
 
-      <fieldset>
+      <fieldset className={[styles.sectionField, styles.whenSection].join(" ")}>
         <legend>02 · When</legend>
         <div className={styles.dateTimeGrid}>
           <div>
@@ -289,75 +290,9 @@ export function ReminderComposer({
             <FieldError actionData={actionData} name="localTime" />
           </div>
         </div>
-        <label htmlFor="timeZone">Time zone</label>
-        <select
-          id="timeZone"
-          name="timeZone"
-          required
-          defaultValue={
-            (fieldValue(actionData, "timeZone") || preset?.defaults.timeZone) ??
-            "Asia/Shanghai"
-          }
-          aria-describedby="timeZone-hint timeZone-error"
-        >
-          {zones.map((zone) => (
-            <option key={zone} value={zone}>
-              {zone}
-            </option>
-          ))}
-        </select>
-        <span id="timeZone-hint" className={styles.hint}>
-          We keep the IANA zone so recurring reminders survive clock changes.
-        </span>
-        <FieldError actionData={actionData} name="timeZone" />
-        {preset?.visibleOptions.includes("recurrence") === true ? (
-          <>
-            <label htmlFor="recurrenceKind">Repeat schedule</label>
-            <select
-              id="recurrenceKind"
-              name="recurrenceKind"
-              defaultValue={preset.defaults.recurrenceKind}
-            >
-              <option value="daily">Every day</option>
-              <option value="weekly">Every week</option>
-              <option value="monthly">Every month</option>
-            </select>
-            <input type="hidden" name="recurrenceInterval" value="1" />
-          </>
-        ) : null}
-        {preset?.visibleOptions.some(
-          (option) => option === "lead-time" || option === "lead-times",
-        ) === true ? (
-          <fieldset>
-            <legend>Reminder lead times</legend>
-            {[30, 1440, 10080].map((minutes) => (
-              <label key={minutes}>
-                <input
-                  type="checkbox"
-                  name="leadOffsetsMinutes"
-                  value={minutes}
-                  defaultChecked={preset.defaults.leadOffsetsMinutes.includes(
-                    minutes,
-                  )}
-                />
-                {minutes === 30
-                  ? "30 minutes before"
-                  : minutes === 1440
-                    ? "1 day before"
-                    : "7 days before"}
-              </label>
-            ))}
-          </fieldset>
-        ) : null}
-        {preset?.visibleOptions.includes("acknowledgement") === true ? (
-          <p className={styles.hint}>
-            The secure reminder link includes Done, Snooze, Reschedule, and
-            Cancel.
-          </p>
-        ) : null}
       </fieldset>
 
-      <fieldset>
+      <fieldset className={[styles.sectionField, styles.whoSection].join(" ")}>
         <legend>03 · Who</legend>
         <label htmlFor="recipientEmail">Email address</label>
         <input
@@ -376,14 +311,100 @@ export function ReminderComposer({
         <FieldError actionData={actionData} name="recipientEmail" />
       </fieldset>
 
-      <ActionButton
-        name="intent"
-        value="review"
-        state={pending ? "pending" : "idle"}
-        pendingLabel="Resolving exact time…"
-      >
-        Review reminder
-      </ActionButton>
+      <div className={styles.scheduleOptions} data-expanded={scheduleExpanded}>
+        <button
+          className={styles.optionsToggle}
+          type="button"
+          aria-controls="schedule-options"
+          aria-expanded={scheduleExpanded}
+          onClick={() => {
+            setScheduleExpanded((expanded) => !expanded);
+          }}
+        >
+          <span className={styles.summaryTitle}>Schedule details</span>
+          <span className={styles.summaryMeta}>Time zone &amp; options</span>
+        </button>
+        <div className={styles.optionsBody} id="schedule-options">
+          <label htmlFor="timeZone">Time zone</label>
+          <select
+            id="timeZone"
+            name="timeZone"
+            required
+            defaultValue={
+              (fieldValue(actionData, "timeZone") ||
+                preset?.defaults.timeZone) ??
+              "Asia/Shanghai"
+            }
+            aria-describedby="timeZone-hint timeZone-error"
+          >
+            {zones.map((zone) => (
+              <option key={zone} value={zone}>
+                {zone}
+              </option>
+            ))}
+          </select>
+          <span id="timeZone-hint" className={styles.hint}>
+            We keep the IANA zone so recurring reminders survive clock changes.
+          </span>
+          <FieldError actionData={actionData} name="timeZone" />
+          {preset?.visibleOptions.includes("recurrence") === true ? (
+            <>
+              <label htmlFor="recurrenceKind">Repeat schedule</label>
+              <select
+                id="recurrenceKind"
+                name="recurrenceKind"
+                defaultValue={preset.defaults.recurrenceKind}
+              >
+                <option value="daily">Every day</option>
+                <option value="weekly">Every week</option>
+                <option value="monthly">Every month</option>
+              </select>
+              <input type="hidden" name="recurrenceInterval" value="1" />
+            </>
+          ) : null}
+          {preset?.visibleOptions.some(
+            (option) => option === "lead-time" || option === "lead-times",
+          ) === true ? (
+            <fieldset className={styles.leadTimes}>
+              <legend>Reminder lead times</legend>
+              {[30, 1440, 10080].map((minutes) => (
+                <label key={minutes}>
+                  <input
+                    type="checkbox"
+                    name="leadOffsetsMinutes"
+                    value={minutes}
+                    defaultChecked={preset.defaults.leadOffsetsMinutes.includes(
+                      minutes,
+                    )}
+                  />
+                  {minutes === 30
+                    ? "30 minutes before"
+                    : minutes === 1440
+                      ? "1 day before"
+                      : "7 days before"}
+                </label>
+              ))}
+            </fieldset>
+          ) : null}
+          {preset?.visibleOptions.includes("acknowledgement") === true ? (
+            <p className={styles.hint}>
+              The secure reminder link includes Done, Snooze, Reschedule, and
+              Cancel.
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      <div className={styles.submitDock}>
+        <ActionButton
+          name="intent"
+          value="review"
+          state={pending ? "pending" : "idle"}
+          pendingLabel="Resolving exact time…"
+        >
+          Review reminder
+        </ActionButton>
+      </div>
     </Form>
   );
 }

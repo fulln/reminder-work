@@ -15,5 +15,6 @@ worker-configuration.d.ts
 .DS_Store
 .idea/
 .vscode/
+.omx/
 *.tmp
 *.swp

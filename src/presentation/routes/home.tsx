@@ -144,12 +144,23 @@ export default function Home({ actionData }: Route.ComponentProps) {
       <section className="hero" aria-labelledby="hero-title">
         <div className="hero-copy">
           <p className="eyebrow">Free online reminders</p>
-          <h1 id="hero-title">Set it once. Return when it matters.</h1>
+          <h1 id="hero-title">
+            <span className="desktop-only">
+              Set it once. Return when it matters.
+            </span>
+            <span className="mobile-only">What needs remembering?</span>
+          </h1>
           <p className="hero-lede">
-            Create a precise reminder for a task, meeting, or deadline. We show
-            the local time, time zone, and UTC instant before anything is sent.
+            <span className="desktop-only">
+              Create a precise reminder for a task, meeting, or deadline. We
+              show the local time, time zone, and UTC instant before anything is
+              sent.
+            </span>
+            <span className="mobile-only">
+              Choose what and when. We’ll handle the follow-through by email.
+            </span>
           </p>
-          <ul className="trust-list" aria-label="Product promises">
+          <ul className="trust-list desktop-only" aria-label="Product promises">
             <li>No account required</li>
             <li>Email verification before delivery</li>
             <li>Cancel or unsubscribe in one click</li>
@@ -158,7 +169,12 @@ export default function Home({ actionData }: Route.ComponentProps) {
 
         <div className="instrument">
           <div className="instrument-head">
-            <span>New reminder</span>
+            <span>
+              New reminder
+              <small className="mobile-only instrument-note">
+                No account · about one minute
+              </small>
+            </span>
             <span className="status-dot">
               {actionData?.stage === "review" ? "Review" : "Draft"}
             </span>

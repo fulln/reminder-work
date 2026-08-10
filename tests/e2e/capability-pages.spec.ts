@@ -1,4 +1,16 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function expandScheduleDetails(page: Page) {
+  const toggle = page.getByRole("button", { name: /Schedule details/ });
+
+  await expect(async () => {
+    if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+      await toggle.click();
+    }
+
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  }).toPass();
+}
 
 const slugs = [
   "online-reminder",
@@ -30,10 +42,16 @@ for (const slug of slugs) {
 
 test("recurring and deadline pages expose their real controls", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.goto("/recurring-reminder");
+  if (testInfo.project.name === "mobile") {
+    await expandScheduleDetails(page);
+  }
   await expect(page.getByLabel("Repeat schedule")).toBeVisible();
   await page.goto("/deadline-reminder");
+  if (testInfo.project.name === "mobile") {
+    await expandScheduleDetails(page);
+  }
   await expect(
     page.getByText("Reminder lead times", { exact: true }),
   ).toBeVisible();

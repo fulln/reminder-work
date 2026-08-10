@@ -6,7 +6,8 @@
   min-width: 0;
 }
 
-.form fieldset {
+.form > .sectionField,
+.leadTimes {
   border: 0;
   display: grid;
   gap: var(--space-1);
@@ -15,7 +16,31 @@
   padding: 0;
 }
 
-.form fieldset + fieldset {
+.whatSection {
+  order: 1;
+}
+
+.whenSection {
+  order: 2;
+}
+
+.scheduleOptions {
+  border: 0;
+  min-width: 0;
+  order: 3;
+}
+
+.whoSection {
+  order: 4;
+}
+
+.submitDock {
+  order: 5;
+}
+
+.whenSection,
+.scheduleOptions,
+.whoSection {
   border-top: 0.0625rem solid var(--color-border);
   padding-top: var(--space-3);
 }
@@ -32,6 +57,19 @@
 
 .form label {
   font-weight: 600;
+}
+
+.optionsToggle {
+  display: none;
+}
+
+.optionsBody {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.leadTimes {
+  margin-top: var(--space-2);
 }
 
 .form input:not([type="checkbox"]),
@@ -153,7 +191,142 @@
   text-decoration: none;
 }
 
-@media (max-width: 64rem) {
+@media (max-width: 48rem) {
+  .form {
+    gap: var(--space-2);
+    padding-bottom: calc(var(--space-6) + var(--space-2));
+  }
+
+  .whatSection {
+    order: 1;
+  }
+
+  .whenSection {
+    order: 2;
+  }
+
+  .whoSection {
+    order: 3;
+  }
+
+  .scheduleOptions {
+    order: 4;
+  }
+
+  .submitDock {
+    order: 5;
+  }
+
+  .dateTimeGrid {
+    gap: var(--space-1);
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  }
+
+  .form input:not([type="checkbox"]),
+  .form select {
+    min-height: 3rem;
+  }
+
+  .whenSection,
+  .whoSection {
+    padding-top: var(--space-2);
+  }
+
+  .scheduleOptions {
+    padding-top: var(--space-2);
+  }
+
+  .optionsToggle {
+    align-items: center;
+    background: transparent;
+    color: var(--color-ink);
+    cursor: pointer;
+    display: flex;
+    gap: var(--space-1);
+    justify-content: space-between;
+    min-height: 2.75rem;
+    padding: 0;
+    text-align: left;
+    width: 100%;
+  }
+
+  .optionsToggle:active {
+    transform: none;
+  }
+
+  .optionsToggle::after {
+    color: var(--color-signal);
+    content: "+";
+    font-family: var(--font-time);
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .scheduleOptions[data-expanded="true"] .optionsToggle::after {
+    content: "−";
+  }
+
+  .summaryTitle {
+    font-weight: 700;
+  }
+
+  .summaryMeta {
+    color: var(--color-muted);
+    font-size: 0.75rem;
+    margin-left: auto;
+  }
+
+  .scheduleOptions[data-expanded="false"] .optionsBody {
+    display: none;
+  }
+
+  .optionsBody {
+    padding-top: var(--space-2);
+  }
+
+  .submitDock,
+  .confirmActions {
+    background: var(--color-surface);
+    border-top: 0.0625rem solid var(--color-border);
+    bottom: 0;
+    display: grid;
+    gap: var(--space-1);
+    inset-inline: 0;
+    padding: var(--space-1) var(--space-2)
+      calc(var(--space-1) + env(safe-area-inset-bottom));
+    position: fixed;
+    z-index: 5;
+  }
+
+  .review {
+    padding-bottom: calc(var(--space-6) + var(--space-6));
+  }
+
+  .review h2,
+  .result h2 {
+    font-size: 1.75rem;
+  }
+
+  .reviewGrid {
+    gap: var(--space-1);
+  }
+
+  .reviewGrid > div {
+    padding: var(--space-1) 0 var(--space-2);
+  }
+
+  .reviewGrid > div:has(.primaryTime) {
+    background: color-mix(
+      in srgb,
+      var(--color-signal) 6%,
+      var(--color-surface)
+    );
+    border-radius: var(--radius-small);
+    padding-inline: var(--space-2);
+  }
+}
+
+@media (max-width: 22rem) {
   .dateTimeGrid {
     grid-template-columns: 1fr;
   }

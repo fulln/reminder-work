@@ -2,6 +2,7 @@ import { RouterContextProvider } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 
 import type { AuthServicePort } from "../../src/application/ports/auth-service";
+import { loader as rootLoader } from "../../src/presentation/root";
 import type { ApplicationServices } from "../../src/presentation/server-context";
 import { applicationServicesContext } from "../../src/presentation/server-context";
 import { loader as callbackLoader } from "../../src/presentation/routes/auth-callback";
@@ -37,6 +38,31 @@ function contextWith(auth: AuthServicePort) {
 }
 
 describe("OAuth relying-site routes", () => {
+  it("refreshes the local cookie from the validated upstream expiry", async () => {
+    const auth: AuthServicePort = {
+      startOAuth: vi.fn(),
+      validateSession: vi.fn().mockResolvedValue({
+        user: { id: "user-1", displayName: "Ada" },
+        expiresAt: "2026-09-10T14:00:00Z",
+      }),
+      logout: vi.fn(),
+    };
+
+    const result = await rootLoader({
+      request: new Request("https://reminders.work/", {
+        headers: { cookie: "reminder_auth_session=opaque-token" },
+      }),
+      context: contextWith(auth),
+    } as never);
+
+    expect(result.data.user).toEqual({ id: "user-1", displayName: "Ada" });
+    const headers = new Headers(result.init?.headers);
+    expect(headers.get("set-cookie")).toContain(
+      "Expires=Thu, 10 Sep 2026 14:00:00 GMT",
+    );
+    expect(headers.get("cache-control")).toBe("private, no-store");
+  });
+
   it("validates the callback before storing an HttpOnly session", async () => {
     const auth: AuthServicePort = {
       startOAuth: vi.fn(),

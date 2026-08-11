@@ -1,4 +1,5 @@
 import {
+  data,
   isRouteErrorResponse,
   Links,
   Meta,
@@ -9,7 +10,10 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
-import { readAuthSessionToken } from "./auth-session.server";
+import {
+  createAuthSessionCookie,
+  readAuthSessionToken,
+} from "./auth-session.server";
 import { applicationServicesContext } from "./server-context";
 import "../styles/fonts.css";
 import "../styles/tokens.css";
@@ -27,7 +31,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     sessionToken === null
       ? null
       : await services.auth.validateSession(sessionToken).catch(() => null);
-  return {
+  const loaderData = {
     lang: new URL(request.url).pathname.startsWith("/zh/")
       ? ("zh-CN" as const)
       : ("en" as const),
@@ -37,6 +41,18 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     vapidPublicKey: services.vapidPublicKey,
     useLocalTurnstileBypass: services.showLocalVerificationPreview,
   };
+  if (sessionToken === null || session === null) return data(loaderData);
+
+  return data(loaderData, {
+    headers: {
+      "Cache-Control": "private, no-store",
+      "Set-Cookie": createAuthSessionCookie({
+        sessionToken,
+        expiresAt: session.expiresAt,
+        secure: services.secureAuthCookie,
+      }),
+    },
+  });
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {

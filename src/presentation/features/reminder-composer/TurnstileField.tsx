@@ -130,6 +130,20 @@ export function TurnstileField({
     };
   }, [siteKey, useLocalBypass]);
 
+  useEffect(() => {
+    if (
+      useLocalBypass ||
+      fieldError === undefined ||
+      api.current === null ||
+      widgetId.current === undefined
+    )
+      return;
+
+    setToken("");
+    setStatus("ready");
+    api.current.reset(widgetId.current);
+  }, [fieldError, useLocalBypass]);
+
   return (
     <fieldset className={styles.securityField}>
       <legend>{String(step).padStart(2, "0")} · Security</legend>
@@ -144,7 +158,7 @@ export function TurnstileField({
               ? "The security check could not load. Reload and try again."
               : "Protected by Cloudflare Turnstile."}
       </span>
-      {fieldError === undefined ? null : (
+      {fieldError === undefined || status === "verified" ? null : (
         <span className={styles.fieldError} id="turnstileToken-error">
           {fieldError.join(" ")}
         </span>

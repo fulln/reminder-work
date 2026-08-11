@@ -65,6 +65,8 @@ export function WebPushField({
 }) {
   const [state, setState] = useState<PushState>("checking");
   const [subscription, setSubscription] = useState(initialSubscription);
+  const [testNotificationFailed, setTestNotificationFailed] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState("");
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -88,7 +90,10 @@ export function WebPushField({
       return;
     }
     const wasDenied = state === "denied" || state === "denied-again";
+    setSubscriptionError("");
+    setTestNotificationFailed(false);
     setState("enabling");
+    let stage: "service-worker" | "subscription" = "service-worker";
     try {
       let permission = Notification.permission;
       if (permission === "default") {
@@ -98,9 +103,11 @@ export function WebPushField({
         setState(wasDenied ? "denied-again" : "denied");
         return;
       }
-      const registration = await navigator.serviceWorker.register("/sw.js", {
+      await navigator.serviceWorker.register("/sw.js", {
         scope: "/",
       });
+      const registration = await navigator.serviceWorker.ready;
+      stage = "subscription";
       const existing = await registration.pushManager.getSubscription();
       const active =
         existing ??
@@ -109,18 +116,28 @@ export function WebPushField({
           applicationServerKey: applicationServerKey(publicKey),
         }));
       setSubscription(serializeSubscription(active));
-      await showTestNotification(registration);
       setState("ready");
+      try {
+        await showTestNotification(registration);
+      } catch {
+        setTestNotificationFailed(true);
+      }
     } catch {
+      setSubscriptionError(
+        stage === "service-worker"
+          ? "Notification setup did not finish. Reload this page and try again."
+          : "Chrome could not create a push subscription. Check that Notifications are allowed, then try again.",
+      );
       setState("error");
     }
   }
 
   async function testAgain(): Promise<void> {
+    setTestNotificationFailed(false);
     try {
       await showTestNotification(await navigator.serviceWorker.ready);
     } catch {
-      setState("error");
+      setTestNotificationFailed(true);
     }
   }
 
@@ -131,7 +148,11 @@ export function WebPushField({
         <div className={styles.pushReady} role="status">
           <span>
             <strong>Browser notifications enabled</strong>
-            <small>A system test notification was sent to this device.</small>
+            <small>
+              {testNotificationFailed
+                ? "Push is active, but the test notification could not be displayed."
+                : "This browser can receive your reminders."}
+            </small>
           </span>
           <button type="button" onClick={() => void testAgain()}>
             Test again
@@ -181,7 +202,7 @@ export function WebPushField({
       ) : null}
       {state === "error" ? (
         <span className={styles.fieldError} role="alert">
-          This browser could not subscribe. Try again or choose Email.
+          {subscriptionError}
         </span>
       ) : null}
       {fieldError === undefined ? null : (

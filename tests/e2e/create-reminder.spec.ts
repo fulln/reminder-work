@@ -199,9 +199,11 @@ test("enables this browser explicitly and creates a push-only reminder", async (
   await page.addInitScript(() => {
     const browserState = window as Window & {
       __notificationPermissionRequests?: number;
+      __testNotificationShouldFail?: boolean;
       __testNotifications?: number;
     };
     browserState.__notificationPermissionRequests = 0;
+    browserState.__testNotificationShouldFail = false;
     browserState.__testNotifications = 0;
     Object.defineProperty(window, "Notification", {
       configurable: true,
@@ -232,13 +234,15 @@ test("enables this browser explicitly and creates a push-only reminder", async (
       showNotification: () => {
         browserState.__testNotifications =
           (browserState.__testNotifications ?? 0) + 1;
-        return Promise.resolve();
+        return browserState.__testNotificationShouldFail
+          ? Promise.reject(new Error("TEST_NOTIFICATION_FAILED"))
+          : Promise.resolve();
       },
     };
     Object.defineProperty(navigator, "serviceWorker", {
       configurable: true,
       value: {
-        register: () => Promise.resolve(registration),
+        register: () => Promise.resolve({}),
         ready: Promise.resolve(registration),
       },
     });
@@ -281,6 +285,21 @@ test("enables this browser explicitly and creates a push-only reminder", async (
           .__testNotifications,
     ),
   ).toBe(1);
+
+  await page.evaluate(() => {
+    (
+      window as Window & {
+        __testNotificationShouldFail?: boolean;
+      }
+    ).__testNotificationShouldFail = true;
+  });
+  await page.getByRole("button", { name: "Test again" }).click();
+  await expect(page.getByText("Browser notifications enabled")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Push is active, but the test notification could not be displayed.",
+    ),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Review reminder" }).click();
   await expect(

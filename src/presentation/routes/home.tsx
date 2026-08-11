@@ -1,4 +1,5 @@
 import type { ReminderDraftInput } from "../../application/contracts/create-reminder";
+import type { CalendarExportData } from "../../application/contracts/calendar-export";
 import type { PushSubscriptionInput } from "../../application/contracts/push-subscription";
 import type { ComposerActionData } from "../features/reminder-composer/ReminderComposer";
 import { ReminderComposer } from "../features/reminder-composer/ReminderComposer";
@@ -108,6 +109,16 @@ function valuesFromDraft(
   );
 }
 
+function calendarFromDraft(
+  draft: ReminderDraftInput,
+  services: ApplicationServices,
+): CalendarExportData | undefined {
+  const reviewed = services.reviewReminder(draft);
+  return reviewed.ok
+    ? { title: reviewed.value.title, schedule: reviewed.value.schedule }
+    : undefined;
+}
+
 export async function action({
   request,
   context,
@@ -144,8 +155,20 @@ export async function handleComposerAction(
 
   const result = await services.createReminder(draft);
   if (result.ok) {
+    const calendar = calendarFromDraft(draft, services);
     if (result.data.state === "active") {
-      return { stage: "created", result: result.data };
+      return {
+        stage: "created",
+        result: result.data,
+        ...(calendar === undefined
+          ? {}
+          : {
+              calendar: {
+                ...calendar,
+                managePath: `/manage/${result.data.manageToken}`,
+              },
+            }),
+      };
     }
     return {
       stage: "created",
@@ -157,6 +180,7 @@ export async function handleComposerAction(
           ? { verificationToken: result.data.verificationToken }
           : {}),
       },
+      ...(calendar === undefined ? {} : { calendar }),
     };
   }
 

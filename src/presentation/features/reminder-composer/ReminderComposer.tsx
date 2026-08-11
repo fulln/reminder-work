@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 
 import type { CreateReminderAccepted } from "../../../application/use-cases/create-reminder";
+import type { CalendarExportData } from "../../../application/contracts/calendar-export";
 import type { ReviewedReminder } from "../../../application/use-cases/review-reminder";
 import type { CapabilityPreset } from "../../../content/capability-presets";
 import { parseReminderText } from "../../../domain/reminder/parse-reminder-text";
@@ -43,6 +44,7 @@ export type ComposerActionData =
   | {
       readonly stage: "created";
       readonly result: ComposerCreatedResult;
+      readonly calendar?: CalendarExportData;
     };
 
 const zones = [
@@ -212,6 +214,35 @@ function HiddenDraft({ reminder }: { readonly reminder: ReviewedReminder }) {
   );
 }
 
+function CalendarExportForm({
+  calendar,
+}: {
+  readonly calendar: CalendarExportData;
+}) {
+  return (
+    <form
+      action="/calendar.ics"
+      method="post"
+      className={styles.calendarExport}
+    >
+      <input type="hidden" name="title" value={calendar.title} />
+      <input
+        type="hidden"
+        name="schedule"
+        value={JSON.stringify(calendar.schedule)}
+      />
+      {calendar.managePath === undefined ? null : (
+        <input type="hidden" name="managePath" value={calendar.managePath} />
+      )}
+      <button type="submit" className={styles.calendarButton}>
+        <span aria-hidden="true">＋</span>
+        Add to calendar
+      </button>
+      <small>Apple Calendar · Google Calendar · Outlook</small>
+    </form>
+  );
+}
+
 export function ReminderComposer({
   actionData,
   preset,
@@ -345,6 +376,9 @@ export function ReminderComposer({
           >
             Manage reminder
           </a>
+          {actionData.calendar === undefined ? null : (
+            <CalendarExportForm calendar={actionData.calendar} />
+          )}
         </section>
       );
     }
@@ -369,6 +403,9 @@ export function ReminderComposer({
               This preview link is shown only by the local development flow.
             </p>
           </>
+        )}
+        {actionData.calendar === undefined ? null : (
+          <CalendarExportForm calendar={actionData.calendar} />
         )}
       </section>
     );
@@ -416,6 +453,12 @@ export function ReminderComposer({
             </div>
           )}
         </dl>
+        <CalendarExportForm
+          calendar={{
+            title: actionData.reminder.title,
+            schedule: actionData.reminder.schedule,
+          }}
+        />
         <Form method="post" className={styles.reviewForm}>
           <HiddenDraft reminder={actionData.reminder} />
           <TurnstileField

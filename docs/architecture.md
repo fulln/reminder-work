@@ -1,6 +1,6 @@
 # Reminders.work 强相关性产品与技术架构
 
-> 状态：Accepted v3
+> 状态：Accepted v4
 > 日期：2026-08-11
 > 产品：**Reminders.work — Free Online Reminders for Tasks, Meetings and Deadlines**
 > 架构约束：生产环境使用 Cloudflare Workers Paid，核心链路全部采用 Cloudflare 原生能力。
@@ -14,7 +14,7 @@ Reminders.work 不做泛待办、项目管理或团队协作平台。它只解�
 产品闭环固定为：
 
 ```text
-搜索发现 → 创建提醒 → 验证邮箱 → 等待 → 邮件送达
+搜索发现 → 创建提醒 → 可选导出日历 → 验证邮箱 → 等待 → 多渠道送达
          → 完成 / 延后 / 改期 → 重复或结束
 ```
 
@@ -27,6 +27,9 @@ Reminders.work 不做泛待办、项目管理或团队协作平台。它只解�
 5. Meeting Reminder：会前提前提醒与会后跟进。
 6. Deadline Reminder：多次提前提醒与逾期状态。
 7. Remind Until Done：未确认完成时继续提醒。
+
+`.ics` 是 Schedule 的只读边界转换器：帮助用户把已确认的时间放入现有日历，
+但不属于 Delivery channel，也不成为 Reminder 的事实源。
 
 技术上采用 Cloudflare 原生模块化单体：
 
@@ -123,6 +126,7 @@ Reminders.work 不做泛待办、项目管理或团队协作平台。它只解�
 - 不做任意收件人代发；用户只能提醒已验证的自己。
 - 不做任意 RFC 5545 RRULE；只实现产品承诺的规则。
 - 不做 Google/Microsoft Calendar 双向同步。
+- 不请求第三方 Calendar OAuth，也不把外部 Calendar 当作调度或送达事实源。
 - 不做 Slack、Teams、Telegram 等渠道。
 - 不做原生移动端、浏览器扩展和开放 API。
 - 不为未来渠道预先拆微服务。
@@ -307,6 +311,8 @@ stateDiagram-v2
 14. Push-only Reminder 可在设备订阅和 Turnstile 均验证后直接激活；包含 Email
     target 的 Reminder 必须先完成邮箱验证。
 15. 永久失效的 PushSubscription 不得继续重试；瞬时失败必须受 Queue 重试上限约束。
+16. Calendar export 只能读取通过相同校验的 Schedule；导出失败不能阻止
+    Reminder 创建、验证或送达。
 
 ### 5.7 DST 规则
 
@@ -820,6 +826,17 @@ reminders/
 验收：Push-only 可直接激活并调度；fallback 在 Push 失败后发送 Email；
 `404/410` 订阅被撤销；通知 payload 默认无敏感内容。
 
+### Slice 1C：Calendar Export
+
+- Review 与创建成功页提供次级 `Add to calendar` 操作。
+- 使用 POST 生成 `text/calendar` attachment，避免标题、时间和管理 token 进入 URL。
+- application 层负责 RFC 5545 转换和文本转义；presentation 只提交 typed export contract。
+- 支持 one-time、daily、weekly、monthly 和已承诺的 month-end policy。
+- 使用 IANA `TZID` 保留本地时间语义；导出 RRULE 和 VALARM，但不访问第三方 API。
+
+验收：Apple Calendar、Google Calendar 和 Outlook 可导入同一个 `.ics`；重复规则、
+DST 语义和非 ASCII 标题不损坏；重复点击生成稳定 UID；下载失败不影响创建主流程。
+
 ### Slice 2：登录、编辑和 Snooze
 
 - Magic Link、Dashboard、编辑、暂停、恢复、延后。
@@ -872,7 +889,8 @@ Email Service 故障 30 分钟：网站继续持久化；Queue 保留；backlog 
 ### 17.3 两个未来变化
 
 1. **更多浏览器能力**：Web Push 已作为同一 Occurrence 的 Delivery target；未来只评估通知动作和 badge，不新增调度系统。
-2. **`.ics` 导出/导入**：作为 Schedule 的边界转换器；不建设完整 Calendar 同步域。
+2. **Calendar 演进**：`.ics` 导出作为 Schedule 的边界转换器；只有真实需求证明
+   OAuth 授权和双向一致性值得其复杂度后，才重新评审 Calendar 同步域。
 
 团队空间、任务看板、通用 API 只有在独立付费需求成立后重新做架构评审，不能从当前设计自然膨胀出来。
 
@@ -902,7 +920,7 @@ Email Service 故障 30 分钟：网站继续持久化；Queue 保留；backlog 
 
 ### 决策
 
-采用“提醒闭环产品 + Cloudflare 原生模块化单体”：建设 Online、Email、Browser、Recurring、Meeting、Deadline、Follow-up/Until Done 强相关能力；D1 为唯一事实源，Workflow 调度，Queue 投递，Email Service 与标准 Web Push 作为可组合 Delivery targets，Cron 对账。
+采用“提醒闭环产品 + Cloudflare 原生模块化单体”：建设 Online、Email、Browser、Recurring、Meeting、Deadline、Follow-up/Until Done 强相关能力；D1 为唯一事实源，Workflow 调度，Queue 投递，Email Service 与标准 Web Push 作为可组合 Delivery targets，Cron 对账。Calendar 只通过无状态 `.ics` 导出读取已验证的 Schedule，不进入 DeliveryPlan 或持久化模型。
 
 ### 原因
 

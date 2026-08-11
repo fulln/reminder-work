@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 async function revealScheduleDetails(page: Page) {
   const toggle = page.getByRole("button", { name: /Schedule details/ });
@@ -40,9 +41,20 @@ test("reviews exact time then reaches email verification", async ({ page }) => {
   await expect(page.getByText(/01:00.*UTC/)).toBeVisible();
   await expect(page.getByText("04 · Security", { exact: true })).toBeVisible();
   await expect(page.getByText("Security check complete.")).toBeVisible();
+  const calendarDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Add to calendar" }).click();
+  const calendar = await calendarDownload;
+  expect(calendar.suggestedFilename()).toBe("reminder.ics");
+  const calendarPath = await calendar.path();
+  expect(await readFile(calendarPath, "utf8")).toContain(
+    "DTSTART;TZID=Asia/Shanghai:20260820T090000",
+  );
   await page.getByRole("button", { name: "Create reminder" }).click();
   await expect(
     page.getByRole("heading", { name: "Check your email" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Add to calendar" }),
   ).toBeVisible();
   await page
     .getByRole("link", { name: "Open local verification preview" })
@@ -193,6 +205,9 @@ test("enables this browser explicitly and creates a push-only reminder", async (
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Manage reminder" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Add to calendar" }),
   ).toBeVisible();
 });
 

@@ -43,6 +43,9 @@ state in under 60 seconds using pointer, keyboard, or supported assistive techno
 7. **Given** browser plus email fallback, **When** Push cannot be delivered, **Then** the
    occurrence is delivered through the verified email without duplicating a successful
    target.
+8. **Given** a reviewed or created reminder, **When** the visitor chooses Add to calendar,
+   **Then** the browser downloads an importable `.ics` file without changing reminder
+   activation, verification, or delivery state.
 
 ---
 
@@ -217,6 +220,14 @@ contract versioning are rejected with actionable messages.
   can retry or fall back without duplicating a target that already succeeded.
 - **FR-034**: A Push-only reminder MUST activate after device subscription and abuse
   checks; any reminder containing Email MUST remain inactive until email verification.
+- **FR-035**: Calendar export MUST remain a stateless Schedule boundary conversion and
+  MUST NOT be represented as a Delivery channel or a second scheduling source.
+- **FR-036**: Calendar export MUST use POST and a fixed attachment filename so reminder
+  content, schedule data, and management tokens do not enter URLs or routine logs.
+- **FR-037**: Exported files MUST preserve IANA time-zone, one-time and supported
+  recurrence semantics, text escaping, stable UID, and at least one display alarm.
+- **FR-038**: Calendar export failure MUST NOT block or mutate reminder review, creation,
+  verification, scheduling, or delivery.
 
 ### Key Entities
 
@@ -260,11 +271,15 @@ contract versioning are rejected with actionable messages.
   notification in supported test environments and never prompts on initial page load.
 - **SC-012**: Automated delivery tests prove Push success, Email fallback, target-level
   deduplication, and 404/410 subscription revocation.
+- **SC-013**: Automated tests prove exported one-time, daily, weekly, and monthly files
+  are parseable, contain no unescaped user-controlled lines, and retain local time-zone
+  semantics at 320 px and desktop layouts.
 
 ## Assumptions
 
 - English is the canonical public language and Chinese is the first translated language.
-- Email is the only launch delivery channel.
+- Email and browser notification are the launch delivery channels; Calendar export is a
+  separate user-initiated interoperability action.
 - Anonymous visitors may create reminders only for an email address they verify.
 - The visual signature is a time rail connecting schedule, due point, and acknowledgement.
 - The first implementation covers responsive web; native apps and browser extensions are

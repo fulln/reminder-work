@@ -7,6 +7,7 @@
 }
 
 .form > .sectionField,
+.securityField,
 .leadTimes {
   border: 0;
   display: grid;
@@ -34,8 +35,15 @@
   order: 4;
 }
 
-.submitDock {
+.securityField {
+  border-top: 0.0625rem solid var(--color-border);
+  min-width: 0;
   order: 5;
+  padding-top: var(--space-3);
+}
+
+.submitDock {
+  order: 6;
 }
 
 .whenSection,
@@ -213,8 +221,13 @@
     order: 4;
   }
 
-  .submitDock {
+  .securityField {
     order: 5;
+    padding-top: var(--space-2);
+  }
+
+  .submitDock {
+    order: 6;
   }
 
   .dateTimeGrid {

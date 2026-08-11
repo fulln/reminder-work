@@ -54,6 +54,7 @@ describe("composer response privacy", () => {
     const services: ApplicationServices = {
       requestId: "request-1",
       showLocalVerificationPreview: false,
+      turnstileSiteKey: "site-key",
       auth: {
         startOAuth: () => Promise.reject(new Error("not used")),
         validateSession: () => Promise.resolve(null),

@@ -74,7 +74,10 @@ export default {
     const turnstile =
       env.TURNSTILE_SECRET_KEY === undefined
         ? new LocalTurnstileAdapter(requestOrigin)
-        : new CloudflareTurnstileAdapter(env.TURNSTILE_SECRET_KEY);
+        : new CloudflareTurnstileAdapter(
+            env.TURNSTILE_SECRET_KEY,
+            new URL(requestOrigin).hostname,
+          );
     const contentProtector = new WebCryptoContentProtector(
       env.CONTENT_ENCRYPTION_KEY,
     );
@@ -99,6 +102,7 @@ export default {
       requestId,
       showLocalVerificationPreview:
         /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(requestOrigin),
+      turnstileSiteKey: env.TURNSTILE_SITE_KEY,
       auth,
       authCallbackUrl,
       secureAuthCookie: new URL(requestOrigin).protocol === "https:",

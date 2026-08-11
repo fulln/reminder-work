@@ -17,6 +17,7 @@ function contextWith(auth: AuthServicePort) {
   const services: ApplicationServices = {
     requestId: "request-1",
     showLocalVerificationPreview: false,
+    turnstileSiteKey: "site-key",
     auth,
     authCallbackUrl: "https://reminders.work/auth/callback",
     secureAuthCookie: true,

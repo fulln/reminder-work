@@ -1,4 +1,4 @@
-import { Form, useNavigation } from "react-router";
+import { Form, useNavigation, useRouteLoaderData } from "react-router";
 import { useEffect, useRef, useState } from "react";
 
 import type { CreateReminderAccepted } from "../../../application/use-cases/create-reminder";
@@ -6,6 +6,8 @@ import type { ReviewedReminder } from "../../../application/use-cases/review-rem
 import type { CapabilityPreset } from "../../../content/capability-presets";
 import styles from "./ReminderComposer.module.css";
 import { ActionButton } from "../../ui/ActionButton";
+import type { loader as rootLoader } from "../../root";
+import { TurnstileField } from "./TurnstileField";
 
 export type ComposerActionData =
   | {
@@ -133,6 +135,7 @@ export function ReminderComposer({
   readonly preset?: CapabilityPreset;
 }) {
   const navigation = useNavigation();
+  const rootData = useRouteLoaderData<typeof rootLoader>("root");
   const pending = navigation.state !== "idle";
   const hasErrors =
     actionData?.stage === "input-error" || actionData?.stage === "create-error";
@@ -222,7 +225,6 @@ export function ReminderComposer({
   return (
     <Form method="post" className={styles.form} noValidate>
       <input type="hidden" name="schemaVersion" value="1" />
-      <input type="hidden" name="turnstileToken" value="test-pass" />
       {hasErrors ? (
         <div
           ref={errorSummary}
@@ -394,6 +396,17 @@ export function ReminderComposer({
           ) : null}
         </div>
       </div>
+
+      <TurnstileField
+        siteKey={rootData?.turnstileSiteKey ?? ""}
+        useLocalBypass={rootData?.useLocalTurnstileBypass === true}
+        fieldError={
+          actionData?.stage === "input-error" ||
+          actionData?.stage === "create-error"
+            ? actionData.fields?.turnstileToken
+            : undefined
+        }
+      />
 
       <div className={styles.submitDock}>
         <ActionButton

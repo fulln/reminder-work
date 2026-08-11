@@ -11,6 +11,7 @@ import type { AuthServicePort } from "../application/ports/auth-service";
 export interface ApplicationServices {
   readonly requestId: string;
   readonly showLocalVerificationPreview: boolean;
+  readonly turnstileSiteKey: string;
   readonly auth: AuthServicePort;
   readonly authCallbackUrl: string;
   readonly secureAuthCookie: boolean;

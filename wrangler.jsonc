@@ -64,7 +64,7 @@
     "APP_ORIGIN": "https://reminders.work",
     "AUTH_BASE_URL": "https://auth.elemvisual.com",
     "AUTH_RELYING_WEBSITE_ID": "reminder-work",
-    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAEMoBSG1z7FXqVPd",
     "EMAIL_FROM": "reminders@reminders.work",
   },
   "observability": {

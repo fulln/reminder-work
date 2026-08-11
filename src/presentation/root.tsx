@@ -31,6 +31,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       ? ("zh-CN" as const)
       : ("en" as const),
     user: session?.user ?? null,
+    turnstileSiteKey: services.turnstileSiteKey,
+    useLocalTurnstileBypass: services.showLocalVerificationPreview,
   };
 }
 

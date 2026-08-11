@@ -2,7 +2,7 @@ import type { PendingReminderStore } from "../../../application/ports/pending-re
 import type { ReminderRepository } from "../../../application/ports/reminder-repository";
 import type { Reminder } from "../../../domain/reminder/reminder";
 
-interface ReminderRow {
+export interface ReminderRow {
   readonly id: string;
   readonly version: number;
   readonly status: Reminder["status"];
@@ -14,7 +14,7 @@ interface ReminderRow {
   readonly updated_at: string;
 }
 
-function fromRow(row: ReminderRow): Reminder {
+export function reminderFromRow(row: ReminderRow): Reminder {
   return {
     id: row.id,
     version: row.version,
@@ -83,7 +83,7 @@ export class D1ReminderRepository
       .prepare("SELECT * FROM reminders WHERE id = ?")
       .bind(id)
       .first<ReminderRow>();
-    return row === null ? null : fromRow(row);
+    return row === null ? null : reminderFromRow(row);
   }
 
   async save(reminder: Reminder, expectedVersion: number): Promise<boolean> {

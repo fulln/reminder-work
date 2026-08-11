@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { calendarExportSchema } from "../../src/application/contracts/calendar-export";
-import { exportReminderCalendar } from "../../src/application/use-cases/export-calendar";
+import {
+  exportReminderCalendar,
+  exportReminderCalendarFeed,
+} from "../../src/application/use-cases/export-calendar";
 import { calendarExportFromForm } from "../../src/presentation/routes/calendar-export";
 
 const baseInput = {
@@ -112,5 +115,38 @@ describe("iCalendar export", () => {
     expect(
       calendarExportSchema.safeParse(calendarExportFromForm(form)).success,
     ).toBe(false);
+  });
+
+  it("exports a stable multi-reminder subscription feed", () => {
+    const feed = exportReminderCalendarFeed(
+      [
+        {
+          id: "reminder-1",
+          version: 2,
+          title: "Prepare launch notes",
+          schedule: baseInput.schedule,
+          updatedAt: "2026-08-11T02:00:00Z",
+        },
+        {
+          id: "reminder-2",
+          version: 4,
+          title: "Call Jordan",
+          schedule: {
+            ...baseInput.schedule,
+            anchorLocal: "2026-08-21T10:30",
+            resolvedUtc: "2026-08-21T02:30:00Z",
+          },
+          updatedAt: "2026-08-12T03:00:00Z",
+        },
+      ],
+      { now: new Date("2026-08-11T00:00:00Z") },
+    );
+
+    expect(feed.match(/BEGIN:VEVENT/gu)).toHaveLength(2);
+    expect(feed).toContain("X-WR-CALNAME:Reminders.work — My reminders");
+    expect(feed).toContain("REFRESH-INTERVAL;VALUE=DURATION:PT15M");
+    expect(feed).toContain("SEQUENCE:2");
+    expect(feed).toContain("SEQUENCE:4");
+    expect(feed).toContain("SUMMARY:Call Jordan");
   });
 });

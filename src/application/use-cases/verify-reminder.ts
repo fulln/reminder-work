@@ -1,5 +1,6 @@
 import { failure, success } from "../contracts/action-result";
 import type { ActionResult } from "../contracts/action-result";
+import type { CalendarFeedStore } from "../ports/calendar-feed-store";
 import type { Clock } from "../ports/clock";
 import type { ReminderRepository } from "../ports/reminder-repository";
 import type { ReminderSchedulerPort } from "../ports/reminder-scheduler";
@@ -10,6 +11,8 @@ export interface VerifyReminderDependencies {
   readonly reminders: ReminderRepository;
   readonly tokens: TokenPort;
   readonly scheduler: ReminderSchedulerPort;
+  readonly calendarFeeds: CalendarFeedStore;
+  readonly appOrigin: string;
 }
 
 export async function verifyReminder(
@@ -21,6 +24,8 @@ export async function verifyReminder(
     readonly state: "active";
     readonly manageToken: string;
     readonly unsubscribeToken: string;
+    readonly calendarSubscriptionUrl?: string;
+    readonly calendarFeedUrl?: string;
   }>
 > {
   const claims = await dependencies.tokens.consume(token, "verify");
@@ -81,10 +86,33 @@ export async function verifyReminder(
         expiresAt,
       }),
     ]);
+    let calendarLinks:
+      | {
+          readonly calendarSubscriptionUrl: string;
+          readonly calendarFeedUrl: string;
+        }
+      | undefined;
+    try {
+      const calendarToken = await dependencies.calendarFeeds.issue(
+        reminder.recipientRef,
+        dependencies.clock.now().toISOString(),
+      );
+      const feedUrl = new URL(
+        `/calendar/${encodeURIComponent(calendarToken)}.ics`,
+        dependencies.appOrigin,
+      ).toString();
+      calendarLinks = {
+        calendarFeedUrl: feedUrl,
+        calendarSubscriptionUrl: feedUrl.replace(/^https?:/u, "webcal:"),
+      };
+    } catch {
+      // Calendar subscription is optional and must not roll back verification.
+    }
     return success(requestId, {
       state: "active",
       manageToken,
       unsubscribeToken,
+      ...calendarLinks,
     });
   }
   return failure(requestId, {

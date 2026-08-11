@@ -28,6 +28,7 @@ function contextWith(auth: AuthServicePort) {
     reviewReminder: vi.fn(),
     createReminder: () => unavailable("request-1"),
     verifyReminder: () => unavailable("request-1"),
+    getCalendarFeed: () => Promise.resolve(null),
     getReminderView: () => unavailable("request-1"),
     manageReminder: () => unavailable("request-1"),
     unsubscribe: () => unavailable("request-1"),

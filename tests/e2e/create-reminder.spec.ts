@@ -42,7 +42,9 @@ test("reviews exact time then reaches email verification", async ({ page }) => {
   await expect(page.getByText("04 · Security", { exact: true })).toBeVisible();
   await expect(page.getByText("Security check complete.")).toBeVisible();
   const calendarDownload = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Add to calendar" }).click();
+  await page
+    .getByRole("button", { name: "Download one-time calendar event" })
+    .click();
   const calendar = await calendarDownload;
   expect(calendar.suggestedFilename()).toBe("reminder.ics");
   const calendarPath = await calendar.path();
@@ -54,7 +56,7 @@ test("reviews exact time then reaches email verification", async ({ page }) => {
     page.getByRole("heading", { name: "Check your email" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Add to calendar" }),
+    page.getByRole("button", { name: "Download one-time calendar event" }),
   ).toBeVisible();
   await page
     .getByRole("link", { name: "Open local verification preview" })
@@ -63,6 +65,18 @@ test("reviews exact time then reaches email verification", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Reminder activated" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Subscribe to my reminders calendar" }),
+  ).toHaveAttribute("href", /^webcal:\/\//u);
+  await page.getByText("Using Google Calendar?").click();
+  const feedUrl = await page
+    .getByRole("link", { name: "private calendar address" })
+    .getAttribute("href");
+  expect(feedUrl).not.toBeNull();
+  const feedResponse = await page.request.get(feedUrl ?? "");
+  expect(feedResponse.status()).toBe(200);
+  expect(feedResponse.headers()["content-type"]).toContain("text/calendar");
+  expect(await feedResponse.text()).toContain("SUMMARY:Prepare launch notes");
 });
 
 test("moves focus to actionable validation feedback", async ({ page }) => {
@@ -182,7 +196,7 @@ test("hands an iCalendar file to the operating system when supported", async ({
   ).toBeVisible();
   await page.getByRole("button", { name: "Review reminder" }).click();
 
-  await page.getByRole("button", { name: "Share to calendar app" }).click();
+  await page.getByRole("button", { name: "Add this reminder once" }).click();
   await expect
     .poll(() =>
       page.evaluate(
@@ -313,7 +327,9 @@ test("enables this browser explicitly and creates a push-only reminder", async (
     page.getByRole("link", { name: "Manage reminder" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Add to calendar" }),
+    page.getByRole("button", {
+      name: "Download one-time calendar event",
+    }),
   ).toBeVisible();
 });
 

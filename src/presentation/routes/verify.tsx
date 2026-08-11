@@ -33,6 +33,33 @@ export default function VerifyReminder({ actionData }: Route.ComponentProps) {
               Unsubscribe
             </a>
           </p>
+          {actionData.data.calendarSubscriptionUrl === undefined ? null : (
+            <section aria-labelledby="calendar-sync-title">
+              <h2 id="calendar-sync-title">Keep your calendar in sync</h2>
+              <p>
+                Subscribe once. Future verified reminders sent to this email
+                address will appear automatically in the same private calendar.
+              </p>
+              <p>
+                <a href={actionData.data.calendarSubscriptionUrl}>
+                  Subscribe to my reminders calendar
+                </a>
+              </p>
+              {actionData.data.calendarFeedUrl === undefined ? null : (
+                <details>
+                  <summary>Using Google Calendar?</summary>
+                  <p>
+                    On a computer, add a calendar “From URL” and use this{" "}
+                    <a href={actionData.data.calendarFeedUrl}>
+                      private calendar address
+                    </a>
+                    . Keep the address private because it grants read access to
+                    your reminder schedule.
+                  </p>
+                </details>
+              )}
+            </section>
+          )}
         </>
       ) : actionData?.ok === false ? (
         <p>This verification link is invalid or has expired.</p>

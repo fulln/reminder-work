@@ -79,6 +79,7 @@ describe("composer response privacy", () => {
           },
         }),
       verifyReminder: () => unavailable("request-1"),
+      getCalendarFeed: () => Promise.resolve(null),
       getReminderView: () => unavailable("request-1"),
       manageReminder: () => unavailable("request-1"),
       unsubscribe: () => unavailable("request-1"),

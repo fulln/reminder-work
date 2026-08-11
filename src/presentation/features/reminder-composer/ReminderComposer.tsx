@@ -293,13 +293,13 @@ function CalendarExportForm({
         {sharingCalendar
           ? "Opening calendar…"
           : systemShareAvailable
-            ? "Share to calendar app"
-            : "Add to calendar"}
+            ? "Add this reminder once"
+            : "Download one-time calendar event"}
       </button>
       <small>
         {systemShareAvailable
-          ? "Uses your system share sheet"
-          : "Apple Calendar · Google Calendar · Outlook"}
+          ? "Uses your system share sheet · subscribe after verification for automatic updates"
+          : "For Apple Calendar · Google Calendar · Outlook · subscribe after verification for automatic updates"}
       </small>
     </form>
   );

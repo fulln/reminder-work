@@ -6,12 +6,14 @@ import * as build from "virtual:react-router/server-build";
 import { createReminder } from "./application/use-cases/create-reminder";
 import { reviewReminder } from "./application/use-cases/review-reminder";
 import { verifyReminder } from "./application/use-cases/verify-reminder";
+import { getCalendarFeed } from "./application/use-cases/get-calendar-feed";
 import { getReminderView } from "./application/use-cases/get-reminder-view";
 import { manageReminder } from "./application/use-cases/manage-reminder/manage-reminder";
 import { unsubscribe } from "./application/use-cases/unsubscribe";
 import { WebCryptoContentProtector } from "./infrastructure/cloudflare/crypto/content-protector";
 import { FlUserAuthClient } from "./infrastructure/cloudflare/auth/fl-user-auth-client";
 import { D1ReminderRepository } from "./infrastructure/cloudflare/d1/reminder-repository";
+import { D1CalendarFeedStore } from "./infrastructure/cloudflare/d1/calendar-feed-store";
 import { D1SuppressionRepository } from "./infrastructure/cloudflare/d1/suppression-repository";
 import { D1DeliveryClaimRepository } from "./infrastructure/cloudflare/d1/delivery-claim-repository";
 import { D1PushSubscriptionRepository } from "./infrastructure/cloudflare/d1/push-subscription-repository";
@@ -71,6 +73,7 @@ export default {
     const requestOrigin = new URL(request.url).origin;
     const clock = { now: () => new Date() };
     const reminders = new D1ReminderRepository(env.DB);
+    const calendarFeeds = new D1CalendarFeedStore(env.DB);
     const tokens = new D1TokenPort(env.DB);
     const suppressions = new D1SuppressionRepository(env.DB);
     const pushSubscriptions = new D1PushSubscriptionRepository(
@@ -129,9 +132,20 @@ export default {
             reminders,
             tokens,
             scheduler: new CloudflareWorkflowScheduler(env.REMINDER_WORKFLOW),
+            calendarFeeds,
+            appOrigin: requestOrigin,
           },
           token,
           requestId,
+        ),
+      getCalendarFeed: (token) =>
+        getCalendarFeed(
+          {
+            feeds: calendarFeeds,
+            contentProtector,
+            now: () => new Date(),
+          },
+          token,
         ),
       getReminderView: (token) =>
         getReminderView(

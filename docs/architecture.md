@@ -887,6 +887,20 @@ Review 页面确认精确时间。
 验收：mock 可用模型时证明 AI 路径及确定性再解析；API 缺失、模型不可用、模型异常和
 无效输出时证明规则兜底；支持文件分享时证明系统 share 被调用，不支持时仍下载 `.ics`。
 
+### Slice 1E：Private Calendar Subscription
+
+- 邮箱验证成功后为 `recipientRef` 签发随机私人订阅 token；数据库只保存 token hash。
+- `GET /calendar/:token` 动态读取同一收件人下 `active/snoozed` Reminder，解密标题并输出
+  多事件 `text/calendar`；pending、terminal 和其他收件人的 Reminder 不进入订阅源。
+- 每个事件使用稳定 UID、Reminder version 作为 SEQUENCE，并输出 LAST-MODIFIED，允许
+  客户端在轮询时识别新增与改期。
+- UI 优先提供 `webcal:` 一次订阅；Google Calendar 提供 HTTPS 私人地址供桌面端
+  “From URL” 使用；原有单事件 OS share / attachment 明确标记为一次性兜底。
+- 订阅 URL 是 bearer secret，不放入日志、分析事件或搜索索引；订阅失败不得回滚邮箱验证。
+
+验收：无效或撤销 token 返回 404；同一已验证邮箱的活动提醒可自动聚合；日历内容不包含
+邮箱地址或管理 token；多事件、重复规则、版本更新和 UTF-8 行折叠保持合法。
+
 ### Slice 2：登录、编辑和 Snooze
 
 - Magic Link、Dashboard、编辑、暂停、恢复、延后。
@@ -939,8 +953,8 @@ Email Service 故障 30 分钟：网站继续持久化；Queue 保留；backlog 
 ### 17.3 两个未来变化
 
 1. **更多浏览器能力**：Web Push 已作为同一 Occurrence 的 Delivery target；未来只评估通知动作和 badge，不新增调度系统。
-2. **Calendar 演进**：`.ics` 导出作为 Schedule 的边界转换器；只有真实需求证明
-   OAuth 授权和双向一致性值得其复杂度后，才重新评审 Calendar 同步域。
+2. **Calendar 演进**：私人 iCalendar 订阅提供只读、轮询式自动同步；只有真实需求证明
+   即时写入或双向一致性值得其复杂度后，才重新评审 Google/Microsoft OAuth。
 3. **本地 AI 演进**：Prompt API 适配器保持可替换；只有浏览器标准稳定且真实输入数据
    证明规则覆盖不足时才扩大其职责，永不绕过领域校验与 Review。
 
@@ -972,7 +986,7 @@ Email Service 故障 30 分钟：网站继续持久化；Queue 保留；backlog 
 
 ### 决策
 
-采用“提醒闭环产品 + Cloudflare 原生模块化单体”：建设 Online、Email、Browser、Recurring、Meeting、Deadline、Follow-up/Until Done 强相关能力；D1 为唯一事实源，Workflow 调度，Queue 投递，Email Service 与标准 Web Push 作为可组合 Delivery targets，Cron 对账。Calendar 只通过无状态 `.ics` 导出读取已验证的 Schedule，不进入 DeliveryPlan 或持久化模型。Quick Create 可用 Chrome 设备内 Prompt API 做语义归一化，但确定性解析器和 Review 始终是最终门禁。
+采用“提醒闭环产品 + Cloudflare 原生模块化单体”：建设 Online、Email、Browser、Recurring、Meeting、Deadline、Follow-up/Until Done 强相关能力；D1 为唯一事实源，Workflow 调度，Queue 投递，Email Service 与标准 Web Push 作为可组合 Delivery targets，Cron 对账。Calendar 通过单事件 `.ics` 和基于已验证收件人的只读私人订阅源读取 Schedule，不进入 DeliveryPlan，也不获得第三方日历写权限。Quick Create 可用 Chrome 设备内 Prompt API 做语义归一化，但确定性解析器和 Review 始终是最终门禁。
 
 ### 原因
 
@@ -989,7 +1003,7 @@ Email Service 故障 30 分钟：网站继续持久化；Queue 保留；backlog 
 - Durable Object 时间桶：当前复杂度无回报。
 - 微服务：没有独立团队或扩缩容依据。
 - 外部邮件服务：不符合已确认的全 Cloudflare 约束。
-- 直接写系统日历：网页无跨平台标准接口，改用 feature-detected OS share + `.ics`。
+- 直接写系统日历：网页无跨平台标准接口，改用私人订阅源和 feature-detected OS share + `.ics`。
 - 云端 LLM 解析：当前输入可由设备内增强和规则兜底覆盖，不值得增加隐私与运行成本。
 
 ### 后果

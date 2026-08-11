@@ -29,8 +29,11 @@ export interface ApplicationServices {
       readonly state: "active";
       readonly manageToken: string;
       readonly unsubscribeToken: string;
+      readonly calendarSubscriptionUrl?: string;
+      readonly calendarFeedUrl?: string;
     }>
   >;
+  getCalendarFeed(token: string): Promise<string | null>;
   getReminderView(token: string): Promise<ActionResult<ReminderView>>;
   manageReminder(
     input: ManageReminderInput,

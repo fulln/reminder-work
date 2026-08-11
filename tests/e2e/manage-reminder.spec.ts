@@ -4,6 +4,9 @@ import type { Page } from "@playwright/test";
 async function createAndVerify(page: Page) {
   await page.goto("/");
   await page
+    .getByRole("button", { name: "Choose date & time manually" })
+    .click();
+  await page
     .getByRole("textbox", { name: "Reminder", exact: true })
     .fill("Send launch brief");
   await page.getByLabel("Email address").fill("owner@example.com");

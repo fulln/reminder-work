@@ -1,4 +1,5 @@
 import type { ReminderSchedule } from "./schedule";
+import type { DeliveryPlan } from "./delivery-plan";
 
 export type ReminderStatus =
   | "draft"
@@ -25,6 +26,7 @@ export interface Reminder {
   readonly version: number;
   readonly status: ReminderStatus;
   readonly schedule: ReminderSchedule;
+  readonly deliveryPlan: DeliveryPlan;
   readonly recipientRef: string;
   readonly contentCiphertext: string;
   readonly createdAt: string;

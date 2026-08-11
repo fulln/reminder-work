@@ -1,4 +1,5 @@
 import type { ReminderDraftInput } from "../../application/contracts/create-reminder";
+import type { PushSubscriptionInput } from "../../application/contracts/push-subscription";
 import type { ComposerActionData } from "../features/reminder-composer/ReminderComposer";
 import { ReminderComposer } from "../features/reminder-composer/ReminderComposer";
 import { applicationServicesContext } from "../server-context";
@@ -23,8 +24,35 @@ export function draftFromForm(form: FormData): ReminderDraftInput {
     return typeof value === "string" ? value : "";
   };
   const recurrenceKind = stringField("recurrenceKind");
+  const deliveryModeValue = stringField("deliveryMode");
+  const deliveryMode =
+    deliveryModeValue === "web_push" ||
+    deliveryModeValue === "web_push_email_fallback"
+      ? deliveryModeValue
+      : ("email" as const);
+  const pushSubscription = (() => {
+    const value = stringField("pushSubscription");
+    if (value === "") return undefined;
+    try {
+      return JSON.parse(value) as PushSubscriptionInput;
+    } catch {
+      return undefined;
+    }
+  })();
   const recurrenceInterval = Number(stringField("recurrenceInterval") || "1");
   const localDate = stringField("localDate");
+  const recurrenceWeekdays = form
+    .getAll("recurrenceWeekdays")
+    .flatMap((value) =>
+      typeof value === "string" && /^[1-7]$/.test(value) ? [Number(value)] : [],
+    );
+  const anchorWeekday = (() => {
+    const jsDay = new Date(`${localDate}T12:00:00Z`).getUTCDay();
+    return jsDay === 0 ? 7 : Math.max(1, jsDay);
+  })();
+  const recurrenceDayOfMonth = Number(
+    stringField("recurrenceDayOfMonth") || localDate.slice(-2),
+  );
   const recurrence =
     recurrenceKind === "daily"
       ? { kind: "daily" as const, interval: recurrenceInterval }
@@ -32,13 +60,16 @@ export function draftFromForm(form: FormData): ReminderDraftInput {
         ? {
             kind: "weekly" as const,
             interval: recurrenceInterval,
-            weekdays: [Math.max(1, new Date(`${localDate}T12:00:00`).getDay())],
+            weekdays:
+              recurrenceWeekdays.length > 0
+                ? recurrenceWeekdays
+                : [anchorWeekday],
           }
         : recurrenceKind === "monthly"
           ? {
               kind: "monthly" as const,
               interval: recurrenceInterval,
-              dayOfMonth: Number(localDate.slice(-2)),
+              dayOfMonth: recurrenceDayOfMonth,
               monthEndPolicy: "last-day" as const,
             }
           : null;
@@ -46,6 +77,8 @@ export function draftFromForm(form: FormData): ReminderDraftInput {
     schemaVersion: 1,
     title: stringField("title"),
     recipientEmail: stringField("recipientEmail"),
+    deliveryMode,
+    ...(pushSubscription === undefined ? {} : { pushSubscription }),
     localDate,
     localTime: stringField("localTime"),
     timeZone: stringField("timeZone"),
@@ -110,26 +143,44 @@ export async function handleComposerAction(
   }
 
   const result = await services.createReminder(draft);
-  return result.ok
-    ? {
-        stage: "created",
-        result: {
-          state: result.data.state,
-          maskedRecipient: result.data.maskedRecipient,
-          expiresAt: result.data.expiresAt,
-          ...(services.showLocalVerificationPreview
-            ? { verificationToken: result.data.verificationToken }
-            : {}),
-        },
-      }
-    : {
-        stage: "create-error",
-        message: result.error.form ?? "The reminder could not be created.",
-        ...(result.error.fields === undefined
-          ? {}
-          : { fields: result.error.fields }),
-        values: valuesFromDraft(draft),
+  if (result.ok) {
+    if (result.data.state === "active") {
+      return { stage: "created", result: result.data };
+    }
+    return {
+      stage: "created",
+      result: {
+        state: result.data.state,
+        maskedRecipient: result.data.maskedRecipient,
+        expiresAt: result.data.expiresAt,
+        ...(services.showLocalVerificationPreview
+          ? { verificationToken: result.data.verificationToken }
+          : {}),
+      },
+    };
+  }
+
+  if (result.error.code === "TURNSTILE_REJECTED") {
+    const reviewed = services.reviewReminder(draft);
+    if (reviewed.ok) {
+      return {
+        stage: "review",
+        reminder: reviewed.value,
+        securityError:
+          result.error.fields?.turnstileToken ??
+          (["Complete the security check again."] as const),
       };
+    }
+  }
+
+  return {
+    stage: "create-error",
+    message: result.error.form ?? "The reminder could not be created.",
+    ...(result.error.fields === undefined
+      ? {}
+      : { fields: result.error.fields }),
+    values: valuesFromDraft(draft),
+  };
 }
 
 export default function Home({ actionData }: Route.ComponentProps) {
@@ -153,12 +204,12 @@ export default function Home({ actionData }: Route.ComponentProps) {
               sent.
             </span>
             <span className="mobile-only">
-              Choose what and when. We’ll handle the follow-through by email.
+              Choose what and when. We’ll notify this browser or your email.
             </span>
           </p>
           <ul className="trust-list desktop-only" aria-label="Product promises">
             <li>No account required</li>
-            <li>Email verification before delivery</li>
+            <li>Browser or verified email delivery</li>
             <li>Cancel or unsubscribe in one click</li>
           </ul>
         </div>

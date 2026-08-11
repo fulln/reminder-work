@@ -18,6 +18,7 @@ function contextWith(auth: AuthServicePort) {
     requestId: "request-1",
     showLocalVerificationPreview: false,
     turnstileSiteKey: "site-key",
+    vapidPublicKey: "vapid-public-key",
     auth,
     authCallbackUrl: "https://reminders.work/auth/callback",
     secureAuthCookie: true,

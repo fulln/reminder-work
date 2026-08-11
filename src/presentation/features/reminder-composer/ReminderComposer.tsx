@@ -1,13 +1,27 @@
 import { Form, useNavigation, useRouteLoaderData } from "react-router";
 import { useEffect, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 
 import type { CreateReminderAccepted } from "../../../application/use-cases/create-reminder";
 import type { ReviewedReminder } from "../../../application/use-cases/review-reminder";
 import type { CapabilityPreset } from "../../../content/capability-presets";
+import { parseReminderText } from "../../../domain/reminder/parse-reminder-text";
+import type { RecurrenceRule } from "../../../domain/reminder/schedule";
+import type { DeliveryMode } from "../../../domain/reminder/delivery-plan";
 import styles from "./ReminderComposer.module.css";
 import { ActionButton } from "../../ui/ActionButton";
 import type { loader as rootLoader } from "../../root";
 import { TurnstileField } from "./TurnstileField";
+import { WebPushField } from "./WebPushField";
+
+type PendingCreatedResult = Omit<
+  Extract<CreateReminderAccepted, { readonly state: "pending_verification" }>,
+  "verificationToken"
+> & { readonly verificationToken?: string };
+
+type ComposerCreatedResult =
+  | PendingCreatedResult
+  | Extract<CreateReminderAccepted, { readonly state: "active" }>;
 
 export type ComposerActionData =
   | {
@@ -15,7 +29,11 @@ export type ComposerActionData =
       readonly fields: Readonly<Record<string, readonly string[]>>;
       readonly values: Readonly<Record<string, string>>;
     }
-  | { readonly stage: "review"; readonly reminder: ReviewedReminder }
+  | {
+      readonly stage: "review";
+      readonly reminder: ReviewedReminder;
+      readonly securityError?: readonly string[];
+    }
   | {
       readonly stage: "create-error";
       readonly message: string;
@@ -24,9 +42,7 @@ export type ComposerActionData =
     }
   | {
       readonly stage: "created";
-      readonly result: Omit<CreateReminderAccepted, "verificationToken"> & {
-        readonly verificationToken?: string;
-      };
+      readonly result: ComposerCreatedResult;
     };
 
 const zones = [
@@ -39,12 +55,26 @@ const zones = [
   "UTC",
 ] as const;
 
+const weekdayNames = [
+  "",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+] as const;
+
 function fieldValue(
   actionData: ComposerActionData | undefined,
   name: string,
 ): string {
   if (actionData?.stage === "review") {
     const field = actionData.reminder[name as keyof ReviewedReminder];
+    if (name === "pushSubscription" && field !== undefined) {
+      return JSON.stringify(field);
+    }
     return typeof field === "string" ? field : "";
   }
   if (
@@ -75,24 +105,90 @@ function FieldError({
   );
 }
 
+function RecurrenceDraftFields({
+  recurrence,
+}: {
+  readonly recurrence?: RecurrenceRule | null;
+}) {
+  if (recurrence === null || recurrence === undefined) return null;
+  return (
+    <>
+      <input type="hidden" name="recurrenceKind" value={recurrence.kind} />
+      <input
+        type="hidden"
+        name="recurrenceInterval"
+        value={recurrence.interval}
+      />
+      {recurrence.kind === "weekly"
+        ? recurrence.weekdays.map((weekday) => (
+            <input
+              key={weekday}
+              type="hidden"
+              name="recurrenceWeekdays"
+              value={weekday}
+            />
+          ))
+        : null}
+      {recurrence.kind === "monthly" ? (
+        <input
+          type="hidden"
+          name="recurrenceDayOfMonth"
+          value={recurrence.dayOfMonth}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function recurrenceLabel(recurrence: RecurrenceRule | null): string {
+  if (recurrence === null) return "Does not repeat";
+  if (recurrence.kind === "daily") return "Every day";
+  if (recurrence.kind === "monthly") {
+    return `Every month on day ${String(recurrence.dayOfMonth)}`;
+  }
+  if (recurrence.weekdays.length === 5) return "Every weekday";
+  const weekday = recurrence.weekdays[0];
+  const weekdayName = weekday === undefined ? undefined : weekdayNames[weekday];
+  return weekdayName === undefined ? "Every week" : `Every ${weekdayName}`;
+}
+
+function setFormValue(
+  form: HTMLFormElement,
+  name: string,
+  value: string,
+): void {
+  const control = form.elements.namedItem(name);
+  if (
+    control instanceof HTMLInputElement ||
+    control instanceof HTMLSelectElement
+  ) {
+    control.value = value;
+  }
+}
+
 function HiddenDraft({ reminder }: { readonly reminder: ReviewedReminder }) {
   return (
     <>
       <input type="hidden" name="schemaVersion" value="1" />
       <input type="hidden" name="title" value={reminder.title} />
-      <input
-        type="hidden"
-        name="recipientEmail"
-        value={reminder.recipientEmail}
-      />
+      <input type="hidden" name="deliveryMode" value={reminder.deliveryMode} />
+      {reminder.recipientEmail === undefined ? null : (
+        <input
+          type="hidden"
+          name="recipientEmail"
+          value={reminder.recipientEmail}
+        />
+      )}
+      {reminder.pushSubscription === undefined ? null : (
+        <input
+          type="hidden"
+          name="pushSubscription"
+          value={JSON.stringify(reminder.pushSubscription)}
+        />
+      )}
       <input type="hidden" name="localDate" value={reminder.localDate} />
       <input type="hidden" name="localTime" value={reminder.localTime} />
       <input type="hidden" name="timeZone" value={reminder.timeZone} />
-      <input
-        type="hidden"
-        name="turnstileToken"
-        value={reminder.turnstileToken}
-      />
       {reminder.disambiguation === undefined ? null : (
         <input
           type="hidden"
@@ -102,18 +198,7 @@ function HiddenDraft({ reminder }: { readonly reminder: ReviewedReminder }) {
       )}
       {reminder.recurrence === null ||
       reminder.recurrence === undefined ? null : (
-        <>
-          <input
-            type="hidden"
-            name="recurrenceKind"
-            value={reminder.recurrence.kind}
-          />
-          <input
-            type="hidden"
-            name="recurrenceInterval"
-            value={reminder.recurrence.interval}
-          />
-        </>
+        <RecurrenceDraftFields recurrence={reminder.recurrence} />
       )}
       {reminder.leadOffsetsMinutes?.map((minutes) => (
         <input
@@ -140,13 +225,118 @@ export function ReminderComposer({
   const hasErrors =
     actionData?.stage === "input-error" || actionData?.stage === "create-error";
   const errorSummary = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const [scheduleExpanded, setScheduleExpanded] = useState(false);
+  const [manualExpanded, setManualExpanded] = useState(
+    preset !== undefined || hasErrors,
+  );
+  const [quickText, setQuickText] = useState("");
+  const [quickError, setQuickError] = useState<string | null>(null);
+  const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>(() => {
+    const value = fieldValue(actionData, "deliveryMode");
+    return value === "web_push" || value === "web_push_email_fallback"
+      ? value
+      : "email";
+  });
+  const [hydrated, setHydrated] = useState(false);
+  const [parsedReminder, setParsedReminder] = useState<{
+    readonly title: string;
+    readonly localDate: string;
+    readonly localTime: string;
+    readonly timeZone: string;
+    readonly recurrence: RecurrenceRule | null;
+  } | null>(null);
 
   useEffect(() => {
     if (hasErrors) errorSummary.current?.focus();
   }, [hasErrors]);
 
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      setHydrated(true);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (preset !== undefined || fieldValue(actionData, "timeZone") !== "") {
+      return;
+    }
+    const form = formRef.current;
+    const control = form?.elements.namedItem("timeZone");
+    if (!(control instanceof HTMLSelectElement)) return;
+    const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (detected === "") return;
+    if (![...control.options].some((option) => option.value === detected)) {
+      control.add(new Option(detected, detected));
+    }
+    control.value = detected;
+  }, [actionData, preset]);
+
+  const manualFieldsExpanded =
+    preset !== undefined || hasErrors || manualExpanded;
+
+  const readyForDelivery =
+    preset !== undefined ||
+    hasErrors ||
+    manualExpanded ||
+    parsedReminder !== null;
+
+  function applyQuickReminder(timeZoneOverride?: string): void {
+    const form = formRef.current;
+    if (form === null) return;
+    const timeZoneControl = form.elements.namedItem("timeZone");
+    const timeZone =
+      timeZoneOverride ??
+      (timeZoneControl instanceof HTMLSelectElement
+        ? timeZoneControl.value
+        : "UTC");
+    const result = parseReminderText(quickText, {
+      now: new Date().toISOString(),
+      timeZone,
+    });
+    if (!result.ok) {
+      setParsedReminder(null);
+      setQuickError(result.message);
+      return;
+    }
+
+    setFormValue(form, "title", result.value.title);
+    setFormValue(form, "localDate", result.value.localDate);
+    setFormValue(form, "localTime", result.value.localTime);
+    setParsedReminder(result.value);
+    setQuickError(null);
+    setManualExpanded(false);
+    setScheduleExpanded(false);
+  }
+
+  function handleQuickKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    applyQuickReminder();
+  }
+
   if (actionData?.stage === "created") {
+    if (actionData.result.state === "active") {
+      return (
+        <section className={styles.result} aria-labelledby="active-title">
+          <p className={styles.step}>Reminder active · Browser delivery</p>
+          <h2 id="active-title">This browser will remind you</h2>
+          <p>
+            The reminder is scheduled. A system notification will open its
+            secure management page when it is due.
+          </p>
+          <a
+            className={styles.previewLink}
+            href={`/manage/${actionData.result.manageToken}`}
+          >
+            Manage reminder
+          </a>
+        </section>
+      );
+    }
     return (
       <section className={styles.result} aria-labelledby="verification-title">
         <p className={styles.step}>Reminder saved · Verification required</p>
@@ -197,34 +387,65 @@ export function ReminderComposer({
             <dt>Universal time</dt>
             <dd>{actionData.reminder.review.utc}</dd>
           </div>
+          <div>
+            <dt>Delivery</dt>
+            <dd>
+              {actionData.reminder.deliveryMode === "email"
+                ? "Email"
+                : actionData.reminder.deliveryMode === "web_push"
+                  ? "Browser notification"
+                  : "Browser notification · Email backup"}
+            </dd>
+          </div>
+          {actionData.reminder.recurrence === null ||
+          actionData.reminder.recurrence === undefined ? null : (
+            <div>
+              <dt>Repeats</dt>
+              <dd>{recurrenceLabel(actionData.reminder.recurrence)}</dd>
+            </div>
+          )}
         </dl>
-        <Form method="post" className={styles.confirmActions}>
+        <Form method="post" className={styles.reviewForm}>
           <HiddenDraft reminder={actionData.reminder} />
-          <ActionButton
-            name="intent"
-            value="create"
-            state={pending ? "pending" : "idle"}
-            pendingLabel="Creating reminder…"
-          >
-            Create reminder
-          </ActionButton>
-          <button
-            className={styles.secondaryButton}
-            type="submit"
-            name="intent"
-            value="edit"
-            disabled={pending}
-          >
-            Edit details
-          </button>
+          <TurnstileField
+            siteKey={rootData?.turnstileSiteKey ?? ""}
+            useLocalBypass={rootData?.useLocalTurnstileBypass === true}
+            fieldError={actionData.securityError}
+          />
+          <div className={styles.confirmActions}>
+            <ActionButton
+              name="intent"
+              value="create"
+              state={pending ? "pending" : "idle"}
+              pendingLabel="Creating reminder…"
+            >
+              Create reminder
+            </ActionButton>
+            <button
+              className={styles.secondaryButton}
+              type="submit"
+              name="intent"
+              value="edit"
+              disabled={pending}
+            >
+              Edit details
+            </button>
+          </div>
         </Form>
       </section>
     );
   }
 
   return (
-    <Form method="post" className={styles.form} noValidate>
+    <Form
+      ref={formRef}
+      method="post"
+      className={styles.form}
+      data-ready={readyForDelivery}
+      noValidate
+    >
       <input type="hidden" name="schemaVersion" value="1" />
+      <RecurrenceDraftFields recurrence={parsedReminder?.recurrence} />
       {hasErrors ? (
         <div
           ref={errorSummary}
@@ -241,79 +462,234 @@ export function ReminderComposer({
         </div>
       ) : null}
 
-      <fieldset className={[styles.sectionField, styles.whatSection].join(" ")}>
-        <legend>01 · What</legend>
-        <label htmlFor="title">Reminder</label>
-        <input
-          id="title"
-          name="title"
-          type="text"
-          maxLength={160}
-          required
-          autoComplete="off"
-          defaultValue={fieldValue(actionData, "title") || preset?.exampleTitle}
-          aria-describedby="title-hint title-error"
-          placeholder={preset?.exampleTitle ?? "Prepare the launch notes"}
-        />
-        <span id="title-hint" className={styles.hint}>
-          Use a short action you will recognize immediately.
-        </span>
-        <FieldError actionData={actionData} name="title" />
-      </fieldset>
+      {preset === undefined && !manualExpanded ? (
+        <fieldset
+          className={[styles.sectionField, styles.quickSection].join(" ")}
+        >
+          <legend>01 · Quick create</legend>
+          <label htmlFor="quickReminder">
+            What should we remind you about?
+          </label>
+          <input
+            id="quickReminder"
+            name="quickReminder"
+            type="text"
+            disabled={!hydrated}
+            autoComplete="off"
+            value={quickText}
+            onChange={(event) => {
+              setQuickText(event.target.value);
+              setQuickError(null);
+              setParsedReminder(null);
+            }}
+            onKeyDown={handleQuickKeyDown}
+            aria-describedby="quickReminder-hint quickReminder-error"
+            aria-invalid={quickError === null ? undefined : true}
+            placeholder="Remind me to send the report tomorrow at 9am"
+          />
+          <span id="quickReminder-hint" className={styles.hint}>
+            Try “in 30 minutes”, “next Monday”, or “every weekday at 9am”.
+          </span>
+          {quickError === null ? null : (
+            <span
+              className={styles.fieldError}
+              id="quickReminder-error"
+              role="alert"
+            >
+              {quickError}
+            </span>
+          )}
+          <button
+            type="button"
+            className={styles.quickButton}
+            onClick={() => {
+              applyQuickReminder();
+            }}
+            disabled={!hydrated}
+          >
+            Set date &amp; time
+          </button>
+        </fieldset>
+      ) : null}
 
-      <fieldset className={[styles.sectionField, styles.whenSection].join(" ")}>
-        <legend>02 · When</legend>
-        <div className={styles.dateTimeGrid}>
-          <div>
-            <label htmlFor="localDate">Date</label>
-            <input
-              id="localDate"
-              name="localDate"
-              type="date"
-              required
-              defaultValue={fieldValue(actionData, "localDate")}
-              aria-describedby="localDate-error"
-            />
-            <FieldError actionData={actionData} name="localDate" />
+      {parsedReminder === null || manualExpanded ? null : (
+        <section className={styles.parsedPreview} aria-live="polite">
+          <span className={styles.parsedMarker}>Understood</span>
+          <strong>{parsedReminder.title}</strong>
+          <span>
+            {parsedReminder.localDate} · {parsedReminder.localTime} ·{" "}
+            {parsedReminder.timeZone}
+          </span>
+          <span>{recurrenceLabel(parsedReminder.recurrence)}</span>
+        </section>
+      )}
+
+      {preset === undefined ? (
+        <button
+          className={styles.manualToggle}
+          type="button"
+          aria-controls="manual-reminder-fields"
+          aria-expanded={manualExpanded}
+          disabled={!hydrated}
+          onClick={() => {
+            if (manualExpanded) {
+              setManualExpanded(false);
+              return;
+            }
+            setParsedReminder(null);
+            setQuickError(null);
+            setManualExpanded(true);
+          }}
+        >
+          {manualExpanded ? "Use quick create" : "Choose date & time manually"}
+        </button>
+      ) : null}
+
+      <div
+        className={styles.manualFields}
+        id="manual-reminder-fields"
+        data-expanded={manualFieldsExpanded}
+      >
+        <fieldset
+          className={[styles.sectionField, styles.whatSection].join(" ")}
+        >
+          <legend>01 · What</legend>
+          <label htmlFor="title">Reminder</label>
+          <input
+            id="title"
+            name="title"
+            type="text"
+            maxLength={160}
+            required
+            autoComplete="off"
+            defaultValue={
+              fieldValue(actionData, "title") || preset?.exampleTitle
+            }
+            aria-describedby="title-hint title-error"
+            placeholder={preset?.exampleTitle ?? "Prepare the launch notes"}
+          />
+          <span id="title-hint" className={styles.hint}>
+            Use a short action you will recognize immediately.
+          </span>
+          <FieldError actionData={actionData} name="title" />
+        </fieldset>
+
+        <fieldset
+          className={[styles.sectionField, styles.whenSection].join(" ")}
+        >
+          <legend>02 · When</legend>
+          <div className={styles.dateTimeGrid}>
+            <div>
+              <label htmlFor="localDate">Date</label>
+              <input
+                id="localDate"
+                name="localDate"
+                type="date"
+                required
+                defaultValue={fieldValue(actionData, "localDate")}
+                aria-describedby="localDate-error"
+              />
+              <FieldError actionData={actionData} name="localDate" />
+            </div>
+            <div>
+              <label htmlFor="localTime">Time</label>
+              <input
+                id="localTime"
+                name="localTime"
+                type="time"
+                required
+                defaultValue={
+                  fieldValue(actionData, "localTime") ||
+                  preset?.defaults.localTime
+                }
+                aria-describedby="localTime-error"
+              />
+              <FieldError actionData={actionData} name="localTime" />
+            </div>
           </div>
-          <div>
-            <label htmlFor="localTime">Time</label>
-            <input
-              id="localTime"
-              name="localTime"
-              type="time"
-              required
-              defaultValue={
-                fieldValue(actionData, "localTime") ||
-                preset?.defaults.localTime
+        </fieldset>
+      </div>
+
+      {readyForDelivery ? (
+        <fieldset
+          className={[styles.sectionField, styles.whoSection].join(" ")}
+        >
+          <legend>
+            {preset === undefined && !manualFieldsExpanded ? "02" : "03"} ·
+            Delivery
+          </legend>
+          <div className={styles.deliveryChoices}>
+            {(
+              [
+                ["email", "Email", "Reliable, even when the browser is closed"],
+                [
+                  "web_push",
+                  "This browser",
+                  "System notification on this device",
+                ],
+                [
+                  "web_push_email_fallback",
+                  "Browser + email",
+                  "Email backs up an unavailable push",
+                ],
+              ] as const
+            ).map(([value, title, description]) => (
+              <label className={styles.deliveryChoice} key={value}>
+                <input
+                  type="radio"
+                  name="deliveryMode"
+                  value={value}
+                  checked={deliveryMode === value}
+                  onChange={() => {
+                    setDeliveryMode(value);
+                  }}
+                />
+                <span>
+                  <strong>{title}</strong>
+                  <small>{description}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+          {deliveryMode === "email" ? null : (
+            <WebPushField
+              publicKey={rootData?.vapidPublicKey ?? ""}
+              initialSubscription={fieldValue(actionData, "pushSubscription")}
+              fieldError={
+                actionData?.stage === "input-error" ||
+                actionData?.stage === "create-error"
+                  ? actionData.fields?.pushSubscription
+                  : undefined
               }
-              aria-describedby="localTime-error"
             />
-            <FieldError actionData={actionData} name="localTime" />
-          </div>
-        </div>
-      </fieldset>
+          )}
+          {deliveryMode === "web_push" ? null : (
+            <>
+              <label htmlFor="recipientEmail">Email address</label>
+              <input
+                id="recipientEmail"
+                name="recipientEmail"
+                type="email"
+                required
+                autoComplete="email"
+                defaultValue={fieldValue(actionData, "recipientEmail")}
+                aria-describedby="recipientEmail-hint recipientEmail-error"
+                placeholder="you@example.com"
+              />
+              <span id="recipientEmail-hint" className={styles.hint}>
+                We send nothing until this address is verified.
+              </span>
+              <FieldError actionData={actionData} name="recipientEmail" />
+            </>
+          )}
+        </fieldset>
+      ) : null}
 
-      <fieldset className={[styles.sectionField, styles.whoSection].join(" ")}>
-        <legend>03 · Who</legend>
-        <label htmlFor="recipientEmail">Email address</label>
-        <input
-          id="recipientEmail"
-          name="recipientEmail"
-          type="email"
-          required
-          autoComplete="email"
-          defaultValue={fieldValue(actionData, "recipientEmail")}
-          aria-describedby="recipientEmail-hint recipientEmail-error"
-          placeholder="you@example.com"
-        />
-        <span id="recipientEmail-hint" className={styles.hint}>
-          We send nothing until this address is verified.
-        </span>
-        <FieldError actionData={actionData} name="recipientEmail" />
-      </fieldset>
-
-      <div className={styles.scheduleOptions} data-expanded={scheduleExpanded}>
+      <div
+        className={styles.scheduleOptions}
+        data-expanded={scheduleExpanded}
+        data-ready={readyForDelivery}
+      >
         <button
           className={styles.optionsToggle}
           type="button"
@@ -337,6 +713,11 @@ export function ReminderComposer({
                 preset?.defaults.timeZone) ??
               "Asia/Shanghai"
             }
+            onChange={(event) => {
+              if (parsedReminder !== null) {
+                applyQuickReminder(event.target.value);
+              }
+            }}
             aria-describedby="timeZone-hint timeZone-error"
           >
             {zones.map((zone) => (
@@ -397,27 +778,18 @@ export function ReminderComposer({
         </div>
       </div>
 
-      <TurnstileField
-        siteKey={rootData?.turnstileSiteKey ?? ""}
-        useLocalBypass={rootData?.useLocalTurnstileBypass === true}
-        fieldError={
-          actionData?.stage === "input-error" ||
-          actionData?.stage === "create-error"
-            ? actionData.fields?.turnstileToken
-            : undefined
-        }
-      />
-
-      <div className={styles.submitDock}>
-        <ActionButton
-          name="intent"
-          value="review"
-          state={pending ? "pending" : "idle"}
-          pendingLabel="Resolving exact time…"
-        >
-          Review reminder
-        </ActionButton>
-      </div>
+      {readyForDelivery ? (
+        <div className={styles.submitDock}>
+          <ActionButton
+            name="intent"
+            value="review"
+            state={pending ? "pending" : "idle"}
+            pendingLabel="Resolving exact time…"
+          >
+            Review reminder
+          </ActionButton>
+        </div>
+      ) : null}
     </Form>
   );
 }

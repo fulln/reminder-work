@@ -1,7 +1,7 @@
 # Reminders.work 强相关性产品与技术架构
 
-> 状态：Proposed v2
-> 日期：2026-08-10
+> 状态：Accepted v3
+> 日期：2026-08-11
 > 产品：**Reminders.work — Free Online Reminders for Tasks, Meetings and Deadlines**
 > 架构约束：生产环境使用 Cloudflare Workers Paid，核心链路全部采用 Cloudflare 原生能力。
 
@@ -18,14 +18,15 @@ Reminders.work 不做泛待办、项目管理或团队协作平台。它只解�
          → 完成 / 延后 / 改期 → 重复或结束
 ```
 
-首发只建设六组强相关能力：
+首发建设七组强相关能力：
 
 1. Online Reminder：网页即用、无需安装。
 2. Email Reminder：可靠邮件送达。
-3. Recurring Reminder：每日、每周、每月重复。
-4. Meeting Reminder：会前提前提醒与会后跟进。
-5. Deadline Reminder：多次提前提醒与逾期状态。
-6. Remind Until Done：未确认完成时继续提醒。
+3. Browser Reminder：经用户授权，以 Web Push 发送系统级浏览器通知。
+4. Recurring Reminder：每日、每周、每月重复。
+5. Meeting Reminder：会前提前提醒与会后跟进。
+6. Deadline Reminder：多次提前提醒与逾期状态。
+7. Remind Until Done：未确认完成时继续提醒。
 
 技术上采用 Cloudflare 原生模块化单体：
 
@@ -58,7 +59,7 @@ Reminders.work 不做泛待办、项目管理或团队协作平台。它只解�
 | 提醒直到完成 | 2 | 2 | 2 | P0 差异化 |
 | Meeting/Deadline 模板 | 2 | 2 | 2 | P0 |
 | 多次提前提醒 | 2 | 2 | 2 | P1 |
-| 浏览器通知 | 2 | 1 | 2 | P1，邮件稳定后 |
+| 浏览器通知 / Web Push | 2 | 1 | 2 | P1，复用统一调度链 |
 | `.ics` 下载 | 1 | 2 | 2 | 辅助能力，不建独立域 |
 | 完整任务看板 | 0 | 2 | 1 | 排除 |
 | 团队聊天/文档 | 0 | 1 | 1 | 排除 |
@@ -130,6 +131,8 @@ Reminders.work 不做泛待办、项目管理或团队协作平台。它只解�
 
 - Workers Paid 必开，不设计 Free 生产降级。
 - 生产邮件直接使用 Cloudflare Email Service binding。
+- 浏览器通知使用标准 Push API、Service Worker 和 VAPID；Cloudflare Worker
+  负责加密并调用浏览器厂商 Push endpoint，不引入第三方业务 SaaS。
 - 邮件发送仍处 Public Beta 的平台风险由产品方接受。
 - 现有工作目录为绿地项目，无旧数据和 API 兼容要求。
 
@@ -238,7 +241,11 @@ type Schedule =
 
 ```ts
 type DeliveryPlan = {
-  channel: "email";
+  mode: "email" | "web_push" | "web_push_email_fallback";
+  targets: Array<
+    | { channel: "email" }
+    | { channel: "web_push"; subscriptionId: string }
+  >;
   leadOffsetsMinutes: number[]; // e.g. [1440, 60, 0]
 };
 
@@ -253,11 +260,15 @@ type AcknowledgementPolicy =
 ```
 
 `leadOffsetsMinutes` 和 `until_done` 分开：前者是到期前计划提醒，后者是到期后未完成的 nudge。
+`web_push_email_fallback` 先尝试 Web Push；Push endpoint 永久失效或发送失败时，
+同一 occurrence 改由 Email 送达。每个 target 使用独立幂等 claim，防止重试导致已成功渠道重复发送。
 
 ### 5.4 执行实体
 
 - **Occurrence**：Reminder 在某个逻辑时间的一次计划触发。
-- **Delivery**：某个 Occurrence 的一次邮件发送尝试。
+- **Delivery**：某个 Occurrence 对某个 target 的一次发送尝试。
+- **PushSubscription**：用户授权的浏览器设备订阅。endpoint、`p256dh` 和
+  `auth` 加密保存；endpoint hash 用于去重；`410/404` 永久失效后立即撤销。
 - **Acknowledgement**：用户对 Occurrence 执行 `done`、`snooze`、`reschedule`。
 - **EmailIdentity**：已验证的提醒收件邮箱。
 - **ScheduleOutbox**：D1 已提交、外部 CF 操作待完成的恢复记录。
@@ -291,6 +302,11 @@ stateDiagram-v2
 9. `until_done` 必须有最大次数或 stopAt，禁止无限发送。
 10. API 幂等键相同但请求体不同必须返回冲突。
 11. Queue 消息仅含 ID；邮箱和提醒内容只能从 D1 解密读取。
+12. Web Push 权限只能由明确用户操作触发，禁止页面加载时索取。
+13. Push payload 默认不包含 Reminder 标题、邮箱或其他敏感内容。
+14. Push-only Reminder 可在设备订阅和 Turnstile 均验证后直接激活；包含 Email
+    target 的 Reminder 必须先完成邮箱验证。
+15. 永久失效的 PushSubscription 不得继续重试；瞬时失败必须受 Queue 重试上限约束。
 
 ### 5.7 DST 规则
 
@@ -338,6 +354,8 @@ flowchart LR
     RQ --> SEND["Email Consumer"]
     AQ --> SEND
     SEND --> EMAIL["Cloudflare Email Service"]
+    SEND --> PUSH["Browser Push Service\nVAPID Web Push"]
+    PUSH --> SW["Device Service Worker\nSystem notification"]
     EMAIL --> EVENTS["Email Events Queue"]
     EVENTS --> D1
     CRON["Cron Reconciler"] --> D1
@@ -369,6 +387,9 @@ env.AUTH_BASE_URL
 env.AUTH_RELYING_WEBSITE_ID
 env.TURNSTILE_SECRET
 env.DATA_ENCRYPTION_KEY_V1
+env.VAPID_PUBLIC_KEY
+env.VAPID_PRIVATE_KEY
+env.VAPID_SUBJECT
 ```
 
 业务依赖方向：`presentation → application → domain ← infrastructure`。Domain 不引用 Cloudflare 类型。
@@ -390,6 +411,7 @@ session token 的在线校验形成明确边界：
 | `idempotency_keys` | actor, key, request_hash, response | PK actor/key |
 | `email_events` | event_id, provider_message_id, type, occurred_at | PK event_id |
 | `email_suppressions` | email_hash, reason, created_at | PK email_hash |
+| `push_subscriptions` | id, endpoint_hash, encrypted subscription, status, updated_at | UNIQUE endpoint_hash、status/updated_at |
 
 需要原子提交的操作使用 D1 `batch()`：
 
@@ -524,11 +546,22 @@ sequenceDiagram
 2. 若 cancelled、paused、completed、version mismatch，安全退出。
 3. 幂等创建 Occurrence，并写入 enqueue outbox。
 4. 发送 Queue 消息；成功后完成 outbox。
-5. Consumer 条件 claim Occurrence，重新检查 suppression。
-6. 解密内容，使用固定模板调用 `env.EMAIL.send()`。
-7. 记录 provider message ID 和 accepted 状态。
-8. Email Event 更新 delivered、deferred、bounced 或 complained。
-9. recurring 计算下一次；one-time 等待用户确认策略或完成。
+5. Consumer 按 target 条件 claim Occurrence，重新检查 suppression。
+6. Email target 调用 Email Service；Web Push target 使用 VAPID 加密后调用订阅 endpoint。
+7. `web_push_email_fallback` 仅在 Push 未成功时发送 Email；各 target 独立去重。
+8. Push endpoint 返回 `404/410` 时撤销订阅且不重试；瞬时失败由 Queue 重试并最终进入 DLQ。
+9. accepted 后记录 Delivery 状态；Email Event 再更新 delivered、deferred、bounced 或 complained。
+10. recurring 计算下一次；one-time 等待用户确认策略或完成。
+
+### 9.2.1 浏览器订阅与测试通知
+
+1. 用户主动选择 `Notify this browser`，页面才调用通知权限请求。
+2. 页面注册 `/sw.js`，使用 VAPID public key 创建 `PushSubscription`。
+3. 页面通过 `ServiceWorkerRegistration.showNotification()` 显示本地系统测试通知。
+4. 创建 Reminder 时，订阅随已通过 Turnstile 的草稿提交；服务端验证并加密保存。
+5. Service Worker 收到远程 `push` 后显示通用通知；点击后只打开不透明 manage URL。
+
+浏览器不支持、权限被拒绝或订阅失败时，UI 保留 Email 路径，不把 Push 描述为可靠可用。
 
 ### 9.3 完成和延后
 
@@ -776,6 +809,17 @@ reminders/
 
 验收：真实邮箱准时送达；重复请求不重复创建；取消后不发送。
 
+### Slice 1B：Web Push Delivery
+
+- VAPID 配置、Service Worker 和明确权限请求。
+- PushSubscription 加密持久化、endpoint 去重与撤销。
+- 本地系统测试通知。
+- `email`、`web_push`、`web_push_email_fallback` 三种投递模式。
+- 复用 Reminder Workflow 和 Queue；target 级幂等 claim。
+
+验收：Push-only 可直接激活并调度；fallback 在 Push 失败后发送 Email；
+`404/410` 订阅被撤销；通知 payload 默认无敏感内容。
+
 ### Slice 2：登录、编辑和 Snooze
 
 - Magic Link、Dashboard、编辑、暂停、恢复、延后。
@@ -827,7 +871,7 @@ Email Service 故障 30 分钟：网站继续持久化；Queue 保留；backlog 
 
 ### 17.3 两个未来变化
 
-1. **浏览器通知**：若 Email Reminder 已稳定且用户明确需求，给同一 Occurrence 增加 Web Push Delivery；不新增调度系统。
+1. **更多浏览器能力**：Web Push 已作为同一 Occurrence 的 Delivery target；未来只评估通知动作和 badge，不新增调度系统。
 2. **`.ics` 导出/导入**：作为 Schedule 的边界转换器；不建设完整 Calendar 同步域。
 
 团队空间、任务看板、通用 API 只有在独立付费需求成立后重新做架构评审，不能从当前设计自然膨胀出来。
@@ -858,7 +902,7 @@ Email Service 故障 30 分钟：网站继续持久化；Queue 保留；backlog 
 
 ### 决策
 
-采用“提醒闭环产品 + Cloudflare 原生模块化单体”：只建设 Online、Email、Recurring、Meeting、Deadline、Follow-up/Until Done 六组强相关能力；D1 为唯一事实源，Workflow 调度，Queue 投递，Email Service 发送，Cron 对账。
+采用“提醒闭环产品 + Cloudflare 原生模块化单体”：建设 Online、Email、Browser、Recurring、Meeting、Deadline、Follow-up/Until Done 强相关能力；D1 为唯一事实源，Workflow 调度，Queue 投递，Email Service 与标准 Web Push 作为可组合 Delivery targets，Cron 对账。
 
 ### 原因
 
@@ -870,7 +914,7 @@ Email Service 故障 30 分钟：网站继续持久化；Queue 保留；backlog 
 ### 拒绝项
 
 - 泛生产力套件：稀释定位并扩大领域边界。
-- 单页计时工具：没有可靠送达和留存闭环。
+- 单页计时工具：没有可靠送达和留存闭环；短时需求由 Web Push Reminder 覆盖。
 - 纯 Cron 调度：精度和扫描扩展性较差。
 - Durable Object 时间桶：当前复杂度无回报。
 - 微服务：没有独立团队或扩缩容依据。

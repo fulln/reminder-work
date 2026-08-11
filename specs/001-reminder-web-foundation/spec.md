@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-10
 
-**Status**: Draft
+**Status**: Accepted
 
 **Input**: User description: "Establish the frontend UI style, web experience,
 frontend architecture standards, and code-guarding requirements for Reminders.work."
@@ -35,6 +35,14 @@ state in under 60 seconds using pointer, keyboard, or supported assistive techno
 4. **Given** client scripting is unavailable, **When** a visitor opens a public page,
    **Then** the product purpose, capability explanation, labels, and next action remain
    understandable.
+5. **Given** a browser that supports Web Push, **When** the visitor explicitly chooses
+   browser delivery, **Then** permission is requested only from that action and a system
+   test notification confirms the selected device.
+6. **Given** a browser-only reminder, **When** creation succeeds, **Then** it activates
+   without email verification and uses the same durable schedule as an email reminder.
+7. **Given** browser plus email fallback, **When** Push cannot be delivered, **Then** the
+   occurrence is delivered through the verified email without duplicating a successful
+   target.
 
 ---
 
@@ -127,6 +135,9 @@ contract versioning are rejected with actionable messages.
   errors.
 - Public content is available while reminder creation is temporarily unavailable.
 - A new page proposes a keyword that does not map to a distinct product preset.
+- Notification permission is denied, revoked, unsupported, or available only after
+  installing the site as a Home Screen web app.
+- A Push endpoint is malformed, transiently unavailable, or permanently returns 404/410.
 
 ## Requirements *(mandatory)*
 
@@ -194,6 +205,18 @@ contract versioning are rejected with actionable messages.
   sufficiently for a maintainer to take corrective action.
 - **FR-028**: Likely secret files and sensitive reminder content MUST be prevented from
   entering version control or routine diagnostic output.
+- **FR-029**: Delivery MUST support Email, Web Push, and Web Push with Email fallback
+  without introducing a second Reminder scheduler.
+- **FR-030**: Notification permission MUST be requested only after an explicit user
+  action; denied or unsupported browsers MUST retain a complete Email path.
+- **FR-031**: PushSubscription endpoint and key material MUST be validated, encrypted at
+  rest, deduplicated, and revocable; permanent endpoint failures MUST stop retries.
+- **FR-032**: Push payloads MUST omit reminder content and recipient identity by default,
+  and notification clicks MUST navigate only to an opaque management URL.
+- **FR-033**: Delivery idempotency MUST be scoped per occurrence and target so one target
+  can retry or fall back without duplicating a target that already succeeded.
+- **FR-034**: A Push-only reminder MUST activate after device subscription and abuse
+  checks; any reminder containing Email MUST remain inactive until email verification.
 
 ### Key Entities
 
@@ -233,6 +256,10 @@ contract versioning are rejected with actionable messages.
   type, tests, build, accessibility, and critical browser gates without manual assembly.
 - **SC-010**: All visual changes have review evidence for desktop, mobile, keyboard focus,
   reduced motion, loading, error, and success states.
+- **SC-011**: Browser notification enablement produces one visible system test
+  notification in supported test environments and never prompts on initial page load.
+- **SC-012**: Automated delivery tests prove Push success, Email fallback, target-level
+  deduplication, and 404/410 subscription revocation.
 
 ## Assumptions
 

@@ -1,8 +1,12 @@
 import type { z } from "zod";
 
-import { reminderDraftSchema } from "../contracts/create-reminder";
+import {
+  reminderDetailsSchema,
+  reminderDraftSchema,
+} from "../contracts/create-reminder";
 import type {
-  ReminderDraft,
+  ReminderDetails,
+  ReminderDetailsInput,
   ReminderDraftInput,
 } from "../contracts/create-reminder";
 import { createSchedule } from "../../domain/reminder/create-schedule";
@@ -15,9 +19,13 @@ export interface ScheduleReview {
   readonly utc: string;
 }
 
-export interface ReviewedReminder extends ReminderDraft {
+export interface ReviewedReminder extends ReminderDetails {
   readonly schedule: ReminderSchedule;
   readonly review: ScheduleReview;
+}
+
+export interface ReviewedReminderForCreate extends ReviewedReminder {
+  readonly turnstileToken: string;
 }
 
 export type ReviewReminderResult =
@@ -29,7 +37,7 @@ export type ReviewReminderResult =
     };
 
 function valuesFromInput(
-  input: ReminderDraftInput,
+  input: ReminderDetailsInput,
 ): Readonly<Record<string, string>> {
   return Object.fromEntries(
     Object.entries(input).map(([key, value]) => [
@@ -76,9 +84,9 @@ export function formatScheduleReview(
 }
 
 export function reviewReminder(
-  input: ReminderDraftInput,
+  input: ReminderDetailsInput,
 ): ReviewReminderResult {
-  const parsed = reminderDraftSchema.safeParse(input);
+  const parsed = reminderDetailsSchema.safeParse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -108,4 +116,30 @@ export function reviewReminder(
       values: valuesFromInput(input),
     };
   }
+}
+
+export function reviewReminderForCreate(
+  input: ReminderDraftInput,
+):
+  | { readonly ok: true; readonly value: ReviewedReminderForCreate }
+  | Exclude<ReviewReminderResult, { readonly ok: true }> {
+  const parsed = reminderDraftSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      fields: errorsFromZod(parsed.error),
+      values: valuesFromInput(input),
+    };
+  }
+
+  const reviewed = reviewReminder(parsed.data);
+  return reviewed.ok
+    ? {
+        ok: true,
+        value: {
+          ...reviewed.value,
+          turnstileToken: parsed.data.turnstileToken,
+        },
+      }
+    : reviewed;
 }

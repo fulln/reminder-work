@@ -5,10 +5,17 @@ import type { Clock } from "../ports/clock";
 import type { ContentProtector } from "../ports/content-protector";
 import type { IdGenerator } from "../ports/id-generator";
 import type { PendingReminderStore } from "../ports/pending-reminder-store";
+import type { PushSubscriptionRepository } from "../ports/push-subscription-repository";
+import type { ReminderRepository } from "../ports/reminder-repository";
+import type { ReminderSchedulerPort } from "../ports/reminder-scheduler";
 import type { TokenPort } from "../ports/token";
 import type { TurnstilePort } from "../ports/turnstile";
 import type { Reminder } from "../../domain/reminder/reminder";
-import { reviewReminder } from "./review-reminder";
+import {
+  createDeliveryPlan,
+  includesEmail,
+} from "../../domain/reminder/delivery-plan";
+import { reviewReminderForCreate } from "./review-reminder";
 
 export interface CreateReminderDependencies {
   readonly clock: Clock;
@@ -16,15 +23,24 @@ export interface CreateReminderDependencies {
   readonly turnstile: TurnstilePort;
   readonly contentProtector: ContentProtector;
   readonly pendingStore: PendingReminderStore;
+  readonly reminders: ReminderRepository;
+  readonly pushSubscriptions: PushSubscriptionRepository;
+  readonly scheduler: ReminderSchedulerPort;
   readonly tokens: TokenPort;
 }
 
-export interface CreateReminderAccepted {
-  readonly state: "pending_verification";
-  readonly maskedRecipient: string;
-  readonly expiresAt: string;
-  readonly verificationToken: string;
-}
+export type CreateReminderAccepted =
+  | {
+      readonly state: "pending_verification";
+      readonly maskedRecipient: string;
+      readonly expiresAt: string;
+      readonly verificationToken: string;
+    }
+  | {
+      readonly state: "active";
+      readonly channels: readonly ["web_push"];
+      readonly manageToken: string;
+    };
 
 function maskEmail(email: string): string {
   const [local = "", domain = ""] = email.split("@");
@@ -40,7 +56,7 @@ export async function createReminder(
   input: ReminderDraftInput,
   requestId: string,
 ): Promise<ActionResult<CreateReminderAccepted>> {
-  const review = reviewReminder(input);
+  const review = reviewReminderForCreate(input);
   if (!review.ok) {
     return failure(requestId, {
       code: "REMINDER_INPUT_INVALID",
@@ -59,33 +75,74 @@ export async function createReminder(
   }
 
   const now = dependencies.clock.now();
-  const expiresAt = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
   const id = dependencies.ids.create();
+  const pushSubscriptionId =
+    review.value.pushSubscription === undefined
+      ? undefined
+      : await dependencies.pushSubscriptions.upsert(
+          review.value.pushSubscription,
+          now.toISOString(),
+        );
+  const deliveryPlan = createDeliveryPlan(
+    review.value.deliveryMode,
+    pushSubscriptionId,
+  );
+  const emailRequired = includesEmail(deliveryPlan);
+  const recipientIdentity =
+    review.value.recipientEmail ?? `push:${String(pushSubscriptionId)}`;
   const protectedContent = await dependencies.contentProtector.protect(
     review.value.title,
     review.value.recipientEmail,
+    recipientIdentity,
   );
   const reminder: Reminder = {
     id,
     version: 1,
-    status: "pending_verification",
+    status: emailRequired ? "pending_verification" : "active",
     schedule: review.value.schedule,
+    deliveryPlan,
     recipientRef: protectedContent.recipientRef,
     contentCiphertext: protectedContent.ciphertext,
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
   };
-  const verificationToken = await dependencies.tokens.issue({
-    reminderId: id,
-    purpose: "verify",
-    expiresAt,
-  });
-  await dependencies.pendingStore.createPending(reminder, requestId);
+  if (emailRequired) {
+    const expiresAt = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
+    const verificationToken = await dependencies.tokens.issue({
+      reminderId: id,
+      purpose: "verify",
+      expiresAt,
+    });
+    await dependencies.pendingStore.createPending(reminder, requestId);
+    return success(requestId, {
+      state: "pending_verification",
+      maskedRecipient: maskEmail(review.value.recipientEmail ?? ""),
+      expiresAt,
+      verificationToken,
+    });
+  }
 
+  await dependencies.reminders.create(reminder, requestId);
+  try {
+    await dependencies.scheduler.schedule({
+      schemaVersion: 1,
+      reminderId: reminder.id,
+      expectedVersion: reminder.version,
+      dueAt: reminder.schedule.resolvedUtc,
+      idempotencyKey: `${reminder.id}:${String(reminder.version)}:${reminder.schedule.resolvedUtc}`,
+      traceId: requestId,
+    });
+  } catch {
+    // The D1 outbox remains authoritative; reconciliation can retry workflow creation.
+  }
+  const manageToken = await dependencies.tokens.issue({
+    reminderId: id,
+    purpose: "manage",
+    expiresAt: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+  });
   return success(requestId, {
-    state: "pending_verification",
-    maskedRecipient: maskEmail(review.value.recipientEmail),
-    expiresAt,
-    verificationToken,
+    state: "active",
+    channels: ["web_push"],
+    manageToken,
   });
 }

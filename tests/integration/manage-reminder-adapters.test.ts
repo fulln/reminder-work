@@ -16,6 +16,7 @@ const activeReminder: Reminder = {
     recurrence: null,
     leadOffsetsMinutes: [],
   },
+  deliveryPlan: { mode: "email", targets: [{ channel: "email" }] },
   recipientRef: "recipient-1",
   contentCiphertext: "ciphertext",
   createdAt: "2026-08-10T00:00:00.000Z",

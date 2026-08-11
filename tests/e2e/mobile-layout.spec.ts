@@ -26,6 +26,13 @@ test("uses a task-first mobile layout instead of shrinking the desktop compositi
     page.getByText("Set it once. Return when it matters.", { exact: true }),
   ).toBeHidden();
 
+  await expect(
+    page.getByRole("textbox", { name: "What should we remind you about?" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Choose date & time manually" })
+    .click();
+
   const date = await page.getByLabel("Date").boundingBox();
   const time = await page.getByLabel("Time", { exact: true }).boundingBox();
   expect(date).not.toBeNull();
@@ -56,6 +63,13 @@ test("keeps the complete desktop composition visible", async ({
   await expect(
     page.getByText("What needs remembering?", { exact: true }),
   ).toBeHidden();
+  await expect(
+    page.getByRole("textbox", { name: "What should we remind you about?" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Time zone", { exact: true })).toBeHidden();
+  await page
+    .getByRole("button", { name: "Choose date & time manually" })
+    .click();
   await expect(page.getByLabel("Time zone", { exact: true })).toBeVisible();
   await expect(
     page.getByText("Schedule details", { exact: true }),

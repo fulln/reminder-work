@@ -17,6 +17,7 @@ import "../styles/reset.css";
 
 export const links: Route.LinksFunction = () => [
   { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+  { rel: "manifest", href: "/site.webmanifest" },
 ];
 
 export async function loader({ request, context }: Route.LoaderArgs) {
@@ -32,6 +33,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       : ("en" as const),
     user: session?.user ?? null,
     turnstileSiteKey: services.turnstileSiteKey,
+    vapidPublicKey: services.vapidPublicKey,
     useLocalTurnstileBypass: services.showLocalVerificationPreview,
   };
 }
@@ -43,6 +45,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#2f5bff" />
         <Meta />
         <Links />
       </head>

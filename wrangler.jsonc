@@ -66,6 +66,8 @@
     "AUTH_RELYING_WEBSITE_ID": "reminder-work",
     "TURNSTILE_SITE_KEY": "0x4AAAAAAEMoBSG1z7FXqVPd",
     "EMAIL_FROM": "reminders@reminders.work",
+    "VAPID_PUBLIC_KEY": "BGJzEat43kygG5G4R_C1mfaS4AIoDBYA3KLPk47UvhWrLGeRMJTdAKCVEuAQY8B00F-WChvU_jNDK8U1JQExBAI",
+    "VAPID_SUBJECT": "mailto:support@reminders.work",
   },
   "observability": {
     "enabled": true,

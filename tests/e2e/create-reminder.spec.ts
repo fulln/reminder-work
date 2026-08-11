@@ -20,19 +20,22 @@ test("reviews exact time then reaches email verification", async ({ page }) => {
     "Set it once",
   );
   await page
-    .getByRole("textbox", { name: "Reminder", exact: true })
-    .fill("Prepare launch notes");
+    .getByRole("textbox", { name: "What should we remind you about?" })
+    .fill("Prepare launch notes on 2026-08-20 at 9am");
+  await page.getByRole("button", { name: "Set date & time" }).click();
+  await expect(page.getByText("Understood", { exact: true })).toBeVisible();
   await page.getByLabel("Email address").fill("owner@example.com");
-  await page.getByLabel("Date").fill("2026-08-11");
-  await page.getByLabel("Time", { exact: true }).fill("09:00");
   await revealScheduleDetails(page);
   await page
     .getByLabel("Time zone", { exact: true })
     .selectOption("Asia/Shanghai");
+  await expect(page.getByText("04 · Security", { exact: true })).toBeHidden();
   await page.getByRole("button", { name: "Review reminder" }).click();
 
   await expect(page.getByText("Asia/Shanghai", { exact: true })).toBeVisible();
   await expect(page.getByText(/01:00.*UTC/)).toBeVisible();
+  await expect(page.getByText("04 · Security", { exact: true })).toBeVisible();
+  await expect(page.getByText("Security check complete.")).toBeVisible();
   await page.getByRole("button", { name: "Create reminder" }).click();
   await expect(
     page.getByRole("heading", { name: "Check your email" }),
@@ -48,6 +51,9 @@ test("reviews exact time then reaches email verification", async ({ page }) => {
 
 test("moves focus to actionable validation feedback", async ({ page }) => {
   await page.goto("/");
+  await page
+    .getByRole("button", { name: "Choose date & time manually" })
+    .click();
   await page.getByRole("button", { name: "Review reminder" }).click();
   const alert = page.getByRole("alert");
   await expect(alert).toBeVisible();
@@ -57,10 +63,134 @@ test("moves focus to actionable validation feedback", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("keeps quick and manual entry as mutually exclusive modes", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const quickInput = page.getByRole("textbox", {
+    name: "What should we remind you about?",
+  });
+  const manualInput = page.getByRole("textbox", {
+    name: "Reminder",
+    exact: true,
+  });
+
+  await expect(quickInput).toBeVisible();
+  await expect(manualInput).toBeHidden();
+
+  await page
+    .getByRole("button", { name: "Choose date & time manually" })
+    .click();
+  await expect(quickInput).toBeHidden();
+  await expect(manualInput).toBeVisible();
+
+  await page.getByRole("button", { name: "Use quick create" }).click();
+  await expect(quickInput).toBeVisible();
+  await expect(manualInput).toBeHidden();
+});
+
+test("enables this browser explicitly and creates a push-only reminder", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const browserState = window as Window & {
+      __notificationPermissionRequests?: number;
+      __testNotifications?: number;
+    };
+    browserState.__notificationPermissionRequests = 0;
+    browserState.__testNotifications = 0;
+    Object.defineProperty(window, "Notification", {
+      configurable: true,
+      value: {
+        permission: "default",
+        requestPermission: () => {
+          browserState.__notificationPermissionRequests =
+            (browserState.__notificationPermissionRequests ?? 0) + 1;
+          return Promise.resolve("granted");
+        },
+      },
+    });
+    Object.defineProperty(window, "PushManager", {
+      configurable: true,
+      value: true,
+    });
+    const subscription = {
+      toJSON: () => ({
+        endpoint: "https://push.example.com/send/browser-test",
+        keys: { p256dh: "A".repeat(87), auth: "B".repeat(22) },
+      }),
+    };
+    const registration = {
+      pushManager: {
+        getSubscription: () => Promise.resolve(null),
+        subscribe: () => Promise.resolve(subscription),
+      },
+      showNotification: () => {
+        browserState.__testNotifications =
+          (browserState.__testNotifications ?? 0) + 1;
+        return Promise.resolve();
+      },
+    };
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: {
+        register: () => Promise.resolve(registration),
+        ready: Promise.resolve(registration),
+      },
+    });
+  });
+
+  await page.goto("/");
+  expect(
+    await page.evaluate(
+      () =>
+        (window as Window & { __notificationPermissionRequests?: number })
+          .__notificationPermissionRequests,
+    ),
+  ).toBe(0);
+  await page
+    .getByRole("textbox", { name: "What should we remind you about?" })
+    .fill("Review the launch notes on 2026-08-20 at 9am");
+  await page.getByRole("button", { name: "Set date & time" }).click();
+  await page.getByRole("radio", { name: /This browser/ }).check();
+  await expect(page.getByLabel("Email address")).toBeHidden();
+  await page
+    .getByRole("button", { name: "Enable browser notifications" })
+    .click();
+  await expect(page.getByText("Browser notifications enabled")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as Window & { __notificationPermissionRequests?: number })
+          .__notificationPermissionRequests,
+    ),
+  ).toBe(1);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as Window & { __testNotifications?: number })
+          .__testNotifications,
+    ),
+  ).toBe(1);
+
+  await page.getByRole("button", { name: "Review reminder" }).click();
+  await expect(
+    page.getByText("Browser notification", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Create reminder" }).click();
+  await expect(
+    page.getByRole("heading", { name: "This browser will remind you" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Manage reminder" }),
+  ).toBeVisible();
+});
+
 test("keeps public purpose and labels in server HTML", async ({ request }) => {
   const response = await request.get("/");
   const html = await response.text();
   expect(html).toContain("Free online reminders");
-  expect(html).toContain("Email address");
-  expect(html).toContain("Review reminder");
+  expect(html).toContain("What should we remind you about?");
+  expect(html).toContain("Choose date &amp; time manually");
 });

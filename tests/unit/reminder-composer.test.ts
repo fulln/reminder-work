@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { reviewReminder } from "../../src/application/use-cases/review-reminder";
-import { handleComposerAction } from "../../src/presentation/routes/home";
+import {
+  draftFromForm,
+  handleComposerAction,
+} from "../../src/presentation/routes/home";
 import type { ApplicationServices } from "../../src/presentation/server-context";
 
 describe("reviewReminder", () => {
@@ -13,7 +16,6 @@ describe("reviewReminder", () => {
       localDate: "2026-08-11",
       localTime: "09:00",
       timeZone: "Asia/Shanghai",
-      turnstileToken: "test-pass",
     });
 
     expect(result.ok).toBe(true);
@@ -32,7 +34,6 @@ describe("reviewReminder", () => {
       localDate: "2026-08-11",
       localTime: "09:00",
       timeZone: "Asia/Shanghai",
-      turnstileToken: "test-pass",
     });
 
     expect(result.ok).toBe(false);
@@ -55,6 +56,7 @@ describe("composer response privacy", () => {
       requestId: "request-1",
       showLocalVerificationPreview: false,
       turnstileSiteKey: "site-key",
+      vapidPublicKey: "vapid-public-key",
       auth: {
         startOAuth: () => Promise.reject(new Error("not used")),
         validateSession: () => Promise.resolve(null),
@@ -84,8 +86,30 @@ describe("composer response privacy", () => {
     const result = await handleComposerAction(form, services);
     expect(result).toMatchObject({ stage: "created" });
     if (result?.stage === "created") {
-      expect(result.result.verificationToken).toBeUndefined();
+      if (result.result.state === "pending_verification") {
+        expect(result.result.verificationToken).toBeUndefined();
+      }
       expect(JSON.stringify(result)).not.toContain("must-not-leak");
     }
+  });
+});
+
+describe("draftFromForm recurrence", () => {
+  it("preserves a parsed weekday schedule instead of reducing it to the anchor day", () => {
+    const form = new FormData();
+    form.set("recurrenceKind", "weekly");
+    form.set("recurrenceInterval", "1");
+    form.append("recurrenceWeekdays", "1");
+    form.append("recurrenceWeekdays", "2");
+    form.append("recurrenceWeekdays", "3");
+    form.append("recurrenceWeekdays", "4");
+    form.append("recurrenceWeekdays", "5");
+    form.set("localDate", "2026-08-12");
+
+    expect(draftFromForm(form).recurrence).toEqual({
+      kind: "weekly",
+      interval: 1,
+      weekdays: [1, 2, 3, 4, 5],
+    });
   });
 });

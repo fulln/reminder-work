@@ -69,10 +69,12 @@ export function TurnstileField({
   siteKey,
   useLocalBypass,
   fieldError,
+  step = 4,
 }: {
   readonly siteKey: string;
   readonly useLocalBypass: boolean;
   readonly fieldError?: readonly string[];
+  readonly step?: 3 | 4;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const api = useRef<TurnstileApi>(null);
@@ -130,7 +132,7 @@ export function TurnstileField({
 
   return (
     <fieldset className={styles.securityField}>
-      <legend>04 · Security</legend>
+      <legend>{String(step).padStart(2, "0")} · Security</legend>
       <input type="hidden" name="turnstileToken" value={token} />
       {useLocalBypass ? null : <div ref={container} />}
       <span className={styles.hint} aria-live="polite">

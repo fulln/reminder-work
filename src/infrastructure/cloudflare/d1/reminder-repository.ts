@@ -7,6 +7,7 @@ interface ReminderRow {
   readonly version: number;
   readonly status: Reminder["status"];
   readonly schedule_json: string;
+  readonly delivery_plan_json: string;
   readonly recipient_ref: string;
   readonly content_ciphertext: string;
   readonly created_at: string;
@@ -19,6 +20,9 @@ function fromRow(row: ReminderRow): Reminder {
     version: row.version,
     status: row.status,
     schedule: JSON.parse(row.schedule_json) as Reminder["schedule"],
+    deliveryPlan: JSON.parse(
+      row.delivery_plan_json,
+    ) as Reminder["deliveryPlan"],
     recipientRef: row.recipient_ref,
     contentCiphertext: row.content_ciphertext,
     createdAt: row.created_at,
@@ -35,18 +39,31 @@ export class D1ReminderRepository
     reminder: Reminder,
     idempotencyKey: string,
   ): Promise<void> {
+    await this.insert(reminder, idempotencyKey, "verification_requested");
+  }
+
+  async create(reminder: Reminder, idempotencyKey: string): Promise<void> {
+    await this.insert(reminder, idempotencyKey, `reminder_${reminder.status}`);
+  }
+
+  private async insert(
+    reminder: Reminder,
+    idempotencyKey: string,
+    operation: string,
+  ): Promise<void> {
     await this.database.batch([
       this.database
         .prepare(
           `INSERT OR IGNORE INTO reminders
-           (id, version, status, schedule_json, recipient_ref, content_ciphertext, created_at, updated_at, idempotency_key)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (id, version, status, schedule_json, delivery_plan_json, recipient_ref, content_ciphertext, created_at, updated_at, idempotency_key)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           reminder.id,
           reminder.version,
           reminder.status,
           JSON.stringify(reminder.schedule),
+          JSON.stringify(reminder.deliveryPlan),
           reminder.recipientRef,
           reminder.contentCiphertext,
           reminder.createdAt,
@@ -55,14 +72,10 @@ export class D1ReminderRepository
         ),
       this.database
         .prepare(
-          "INSERT OR IGNORE INTO outbox (id, reminder_id, operation, schema_version, created_at) VALUES (?, ?, 'verification_requested', 1, ?)",
+          "INSERT OR IGNORE INTO outbox (id, reminder_id, operation, schema_version, created_at) VALUES (?, ?, ?, 1, ?)",
         )
-        .bind(crypto.randomUUID(), reminder.id, reminder.createdAt),
+        .bind(crypto.randomUUID(), reminder.id, operation, reminder.createdAt),
     ]);
-  }
-
-  async create(reminder: Reminder, idempotencyKey: string): Promise<void> {
-    await this.createPending(reminder, idempotencyKey);
   }
 
   async findById(id: string): Promise<Reminder | null> {
@@ -91,13 +104,14 @@ export class D1ReminderRepository
         ),
       this.database
         .prepare(
-          `UPDATE reminders SET version = ?, status = ?, schedule_json = ?, updated_at = ?
+          `UPDATE reminders SET version = ?, status = ?, schedule_json = ?, delivery_plan_json = ?, updated_at = ?
            WHERE id = ? AND version = ?`,
         )
         .bind(
           reminder.version,
           reminder.status,
           JSON.stringify(reminder.schedule),
+          JSON.stringify(reminder.deliveryPlan),
           reminder.updatedAt,
           reminder.id,
           expectedVersion,

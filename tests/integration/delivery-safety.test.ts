@@ -17,6 +17,7 @@ const reminder: Reminder = {
     recurrence: null,
     leadOffsetsMinutes: [],
   },
+  deliveryPlan: { mode: "email", targets: [{ channel: "email" }] },
   recipientRef: "recipient-ref",
   contentCiphertext: "ciphertext",
   createdAt: "2026-08-10T00:00:00.000Z",
@@ -77,6 +78,12 @@ describe("delivery safety", () => {
         consume: () => Promise.resolve(null),
       },
       email,
+      pushSubscriptions: {
+        upsert: vi.fn(),
+        findActiveById: vi.fn().mockResolvedValue(null),
+        revoke: vi.fn(),
+      },
+      webPush: { send: vi.fn() },
       logger: { info: vi.fn(), error: vi.fn() },
       origin: "https://reminders.work",
       now: () => new Date("2026-08-10T00:00:00.000Z"),
@@ -119,5 +126,155 @@ describe("delivery safety", () => {
     expect(output[0]).not.toContain("private@example.com");
     expect(output[0]).not.toContain("opaque-secret");
     expect(output[0]).not.toContain("Private title");
+  });
+
+  it("delivers push-only reminders without decrypting an email recipient", async () => {
+    const pushReminder: Reminder = {
+      ...reminder,
+      deliveryPlan: {
+        mode: "web_push",
+        targets: [{ channel: "web_push", subscriptionId: "push-1" }],
+      },
+    };
+    const email = { sendReminder: vi.fn() };
+    const webPush = { send: vi.fn().mockResolvedValue("sent") };
+    const incoming = {
+      body: {
+        schemaVersion: 1,
+        kind: "reminder_delivery",
+        reminderId: reminder.id,
+        expectedVersion: reminder.version,
+        idempotencyKey: "occurrence-push",
+        traceId: "trace-push",
+      },
+      ack: vi.fn(),
+      retry: vi.fn(),
+    };
+
+    await processDeliveryMessage(
+      {
+        reminders: {
+          create: vi.fn(),
+          findById: vi.fn().mockResolvedValue(pushReminder),
+          save: vi.fn(),
+        },
+        suppressions: {
+          suppress: vi.fn(),
+          isSuppressed: vi.fn().mockResolvedValue(false),
+        },
+        claims: {
+          claim: vi.fn().mockResolvedValue(true),
+          markSent: vi.fn(),
+          markFailed: vi.fn(),
+        },
+        protector: {
+          protect: vi.fn(),
+          unprotect: vi.fn().mockResolvedValue({ title: "Private title" }),
+        },
+        tokens: {
+          issue: vi.fn().mockResolvedValue("opaque-token"),
+          resolve: vi.fn(),
+          consume: vi.fn(),
+        },
+        email,
+        pushSubscriptions: {
+          upsert: vi.fn(),
+          findActiveById: vi.fn().mockResolvedValue({
+            id: "push-1",
+            endpoint: "https://push.example.com/1",
+            keys: { p256dh: "A".repeat(87), auth: "B".repeat(22) },
+          }),
+          revoke: vi.fn(),
+        },
+        webPush,
+        logger: { info: vi.fn(), error: vi.fn() },
+        origin: "https://reminders.work",
+        now: () => new Date("2026-08-10T00:00:00.000Z"),
+      },
+      incoming,
+    );
+
+    expect(webPush.send).toHaveBeenCalledOnce();
+    expect(email.sendReminder).not.toHaveBeenCalled();
+    expect(incoming.ack).toHaveBeenCalledOnce();
+    expect(incoming.retry).not.toHaveBeenCalled();
+  });
+
+  it("revokes a gone subscription and falls back to verified email", async () => {
+    const fallbackReminder: Reminder = {
+      ...reminder,
+      deliveryPlan: {
+        mode: "web_push_email_fallback",
+        targets: [
+          { channel: "web_push", subscriptionId: "push-1" },
+          { channel: "email" },
+        ],
+      },
+    };
+    const email = { sendReminder: vi.fn().mockResolvedValue(undefined) };
+    const revoke = vi.fn();
+    const incoming = {
+      body: {
+        schemaVersion: 1,
+        kind: "reminder_delivery",
+        reminderId: reminder.id,
+        expectedVersion: reminder.version,
+        idempotencyKey: "occurrence-fallback",
+        traceId: "trace-fallback",
+      },
+      ack: vi.fn(),
+      retry: vi.fn(),
+    };
+
+    await processDeliveryMessage(
+      {
+        reminders: {
+          create: vi.fn(),
+          findById: vi.fn().mockResolvedValue(fallbackReminder),
+          save: vi.fn(),
+        },
+        suppressions: {
+          suppress: vi.fn(),
+          isSuppressed: vi.fn().mockResolvedValue(false),
+        },
+        claims: {
+          claim: vi.fn().mockResolvedValue(true),
+          markSent: vi.fn(),
+          markFailed: vi.fn(),
+        },
+        protector: {
+          protect: vi.fn(),
+          unprotect: vi.fn().mockResolvedValue({
+            title: "Private title",
+            recipientEmail: "private@example.com",
+          }),
+        },
+        tokens: {
+          issue: vi.fn().mockResolvedValue("opaque-token"),
+          resolve: vi.fn(),
+          consume: vi.fn(),
+        },
+        email,
+        pushSubscriptions: {
+          upsert: vi.fn(),
+          findActiveById: vi.fn().mockResolvedValue({
+            id: "push-1",
+            endpoint: "https://push.example.com/1",
+            keys: { p256dh: "A".repeat(87), auth: "B".repeat(22) },
+          }),
+          revoke,
+        },
+        webPush: { send: vi.fn().mockResolvedValue("gone") },
+        logger: { info: vi.fn(), error: vi.fn() },
+        origin: "https://reminders.work",
+        now: () => new Date("2026-08-10T00:00:00.000Z"),
+      },
+      incoming,
+    );
+
+    expect(revoke).toHaveBeenCalledWith("push-1", "2026-08-10T00:00:00.000Z");
+    expect(email.sendReminder).toHaveBeenCalledOnce();
+    expect(incoming.ack).toHaveBeenCalledOnce();
+    expect(incoming.retry).not.toHaveBeenCalled();
   });
 });

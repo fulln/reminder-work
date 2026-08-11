@@ -14,9 +14,11 @@ import { FlUserAuthClient } from "./infrastructure/cloudflare/auth/fl-user-auth-
 import { D1ReminderRepository } from "./infrastructure/cloudflare/d1/reminder-repository";
 import { D1SuppressionRepository } from "./infrastructure/cloudflare/d1/suppression-repository";
 import { D1DeliveryClaimRepository } from "./infrastructure/cloudflare/d1/delivery-claim-repository";
+import { D1PushSubscriptionRepository } from "./infrastructure/cloudflare/d1/push-subscription-repository";
 import { CloudflareEmailServiceAdapter } from "./infrastructure/cloudflare/email/email-service-adapter";
 import { RedactedLogger } from "./infrastructure/cloudflare/observability/redacted-logger";
 import { processDeliveryMessage } from "./infrastructure/cloudflare/queues/process-delivery-message";
+import { CloudflareWebPushAdapter } from "./infrastructure/cloudflare/web-push/web-push-adapter";
 import { reminderWorkflowMessageSchema } from "./infrastructure/cloudflare/workflows/reminder-workflow-message";
 import type { ReminderWorkflowMessage } from "./infrastructure/cloudflare/workflows/reminder-workflow-message";
 import { CloudflareWorkflowScheduler } from "./infrastructure/cloudflare/workflows/cloudflare-workflow-scheduler";
@@ -71,6 +73,10 @@ export default {
     const reminders = new D1ReminderRepository(env.DB);
     const tokens = new D1TokenPort(env.DB);
     const suppressions = new D1SuppressionRepository(env.DB);
+    const pushSubscriptions = new D1PushSubscriptionRepository(
+      env.DB,
+      env.CONTENT_ENCRYPTION_KEY,
+    );
     const turnstile =
       env.TURNSTILE_SECRET_KEY === undefined
         ? new LocalTurnstileAdapter(requestOrigin)
@@ -94,6 +100,9 @@ export default {
       turnstile,
       contentProtector,
       pendingStore: reminders,
+      reminders,
+      pushSubscriptions,
+      scheduler: new CloudflareWorkflowScheduler(env.REMINDER_WORKFLOW),
       tokens,
     };
 
@@ -103,6 +112,7 @@ export default {
       showLocalVerificationPreview:
         /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(requestOrigin),
       turnstileSiteKey: env.TURNSTILE_SITE_KEY,
+      vapidPublicKey: env.VAPID_PUBLIC_KEY,
       auth,
       authCallbackUrl,
       secureAuthCookie: new URL(requestOrigin).protocol === "https:",
@@ -146,6 +156,20 @@ export default {
     const suppressions = new D1SuppressionRepository(env.DB);
     const protector = new WebCryptoContentProtector(env.CONTENT_ENCRYPTION_KEY);
     const tokens = new D1TokenPort(env.DB);
+    const pushSubscriptions = new D1PushSubscriptionRepository(
+      env.DB,
+      env.CONTENT_ENCRYPTION_KEY,
+    );
+    const webPush =
+      env.VAPID_PRIVATE_KEY === undefined
+        ? {
+            send: () => Promise.reject(new Error("VAPID_NOT_CONFIGURED")),
+          }
+        : new CloudflareWebPushAdapter({
+            publicKey: env.VAPID_PUBLIC_KEY,
+            privateKey: env.VAPID_PRIVATE_KEY,
+            subject: env.VAPID_SUBJECT,
+          });
     const dependencies = {
       reminders,
       suppressions,
@@ -153,6 +177,8 @@ export default {
       protector,
       tokens,
       email: new CloudflareEmailServiceAdapter(env.EMAIL, env.EMAIL_FROM),
+      pushSubscriptions,
+      webPush,
       logger: new RedactedLogger(),
       origin: env.APP_ORIGIN,
       now: () => new Date(),

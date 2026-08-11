@@ -1,7 +1,10 @@
 import { createContext } from "react-router";
 
 import type { ActionResult } from "../application/contracts/action-result";
-import type { ReminderDraftInput } from "../application/contracts/create-reminder";
+import type {
+  ReminderDetailsInput,
+  ReminderDraftInput,
+} from "../application/contracts/create-reminder";
 import type { CreateReminderAccepted } from "../application/use-cases/create-reminder";
 import type { ReviewReminderResult } from "../application/use-cases/review-reminder";
 import type { ReminderView } from "../application/use-cases/get-reminder-view";
@@ -12,10 +15,11 @@ export interface ApplicationServices {
   readonly requestId: string;
   readonly showLocalVerificationPreview: boolean;
   readonly turnstileSiteKey: string;
+  readonly vapidPublicKey: string;
   readonly auth: AuthServicePort;
   readonly authCallbackUrl: string;
   readonly secureAuthCookie: boolean;
-  reviewReminder(input: ReminderDraftInput): ReviewReminderResult;
+  reviewReminder(input: ReminderDetailsInput): ReviewReminderResult;
   createReminder(
     input: ReminderDraftInput,
   ): Promise<ActionResult<CreateReminderAccepted>>;

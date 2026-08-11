@@ -21,6 +21,8 @@ function contextWith(auth: AuthServicePort) {
     vapidPublicKey: "vapid-public-key",
     auth,
     authCallbackUrl: "https://reminders.work/auth/callback",
+    authLoginUrl:
+      "https://auth.elemvisual.com/auth/login?site=reminder-work&return_to=https%3A%2F%2Freminders.work%2Fauth%2Fcallback",
     secureAuthCookie: true,
     reviewReminder: vi.fn(),
     createReminder: () => unavailable("request-1"),

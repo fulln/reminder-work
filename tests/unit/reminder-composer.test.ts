@@ -63,6 +63,8 @@ describe("composer response privacy", () => {
         logout: () => Promise.resolve(),
       },
       authCallbackUrl: "http://localhost:5173/auth/callback",
+      authLoginUrl:
+        "http://localhost:8787/auth/login?site=reminder-work&return_to=http%3A%2F%2Flocalhost%3A5173%2Fauth%2Fcallback",
       secureAuthCookie: false,
       reviewReminder,
       createReminder: () =>

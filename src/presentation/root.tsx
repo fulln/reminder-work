@@ -32,6 +32,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       ? ("zh-CN" as const)
       : ("en" as const),
     user: session?.user ?? null,
+    authLoginUrl: services.authLoginUrl,
     turnstileSiteKey: services.turnstileSiteKey,
     vapidPublicKey: services.vapidPublicKey,
     useLocalTurnstileBypass: services.showLocalVerificationPreview,

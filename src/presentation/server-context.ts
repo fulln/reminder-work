@@ -18,6 +18,7 @@ export interface ApplicationServices {
   readonly vapidPublicKey: string;
   readonly auth: AuthServicePort;
   readonly authCallbackUrl: string;
+  readonly authLoginUrl: string;
   readonly secureAuthCookie: boolean;
   reviewReminder(input: ReminderDetailsInput): ReviewReminderResult;
   createReminder(

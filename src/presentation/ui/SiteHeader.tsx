@@ -38,7 +38,10 @@ export function SiteHeader({
           </a>
         ) : null}
         {!showAuthControl ? null : user === null ? (
-          <a className={styles.authLink} href="/auth/login">
+          <a
+            className={styles.authLink}
+            href={rootData?.authLoginUrl ?? "/auth/login"}
+          >
             {locale === "zh-CN" ? "登录" : "Sign in"}
           </a>
         ) : (

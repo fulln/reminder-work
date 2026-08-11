@@ -1,24 +1,20 @@
 import { expect, test } from "@playwright/test";
 
-test("offers a first-party Google and GitHub sign-in surface", async ({
+test("sends sign in to the centralized authentication service", async ({
   page,
-  request,
 }) => {
   await page.goto("/");
   await expect(page.locator("a.wordmark")).toHaveText("Reminders.work");
-  await page.getByRole("link", { name: "Sign in" }).click();
+  const signIn = page.getByRole("link", { name: "Sign in" });
+  const href = await signIn.getAttribute("href");
+  if (href === null)
+    throw new Error("Sign in link is missing its destination.");
 
-  await expect(
-    page.getByRole("heading", { name: "Continue to Reminders.work" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Continue with Google" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Continue with GitHub" }),
-  ).toBeVisible();
-
-  const html = await (await request.get("/auth/login")).text();
-  expect(html).toContain('name="robots" content="noindex, nofollow"');
-  expect(html).not.toContain("session_token");
+  const authUrl = new URL(href);
+  expect(authUrl.origin).toBe("https://auth.elemvisual.com");
+  expect(authUrl.pathname).toBe("/auth/login");
+  expect(authUrl.searchParams.get("site")).toBe("reminder-work");
+  expect(authUrl.searchParams.get("return_to")).toBe(
+    "http://127.0.0.1:5173/auth/callback",
+  );
 });

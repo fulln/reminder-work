@@ -94,6 +94,9 @@ export default {
         env.AUTH_SERVICE.fetch(new Request(input, init)),
     });
     const authCallbackUrl = new URL("/auth/callback", requestOrigin).toString();
+    const authLoginUrl = new URL("/auth/login", env.AUTH_BASE_URL);
+    authLoginUrl.searchParams.set("site", env.AUTH_RELYING_WEBSITE_ID);
+    authLoginUrl.searchParams.set("return_to", authCallbackUrl);
     const dependencies = {
       clock,
       ids: { create: () => crypto.randomUUID() },
@@ -115,6 +118,7 @@ export default {
       vapidPublicKey: env.VAPID_PUBLIC_KEY,
       auth,
       authCallbackUrl,
+      authLoginUrl: authLoginUrl.toString(),
       secureAuthCookie: new URL(requestOrigin).protocol === "https:",
       reviewReminder,
       createReminder: (input) => createReminder(dependencies, input, requestId),

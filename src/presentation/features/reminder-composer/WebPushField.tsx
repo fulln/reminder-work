@@ -8,6 +8,7 @@ type PushState =
   | "enabling"
   | "ready"
   | "denied"
+  | "denied-again"
   | "unsupported"
   | "error";
 
@@ -86,11 +87,15 @@ export function WebPushField({
       setState("unsupported");
       return;
     }
+    const wasDenied = state === "denied" || state === "denied-again";
     setState("enabling");
     try {
-      const permission = await Notification.requestPermission();
+      let permission = Notification.permission;
+      if (permission === "default") {
+        permission = await Notification.requestPermission();
+      }
       if (permission !== "granted") {
-        setState("denied");
+        setState(wasDenied ? "denied-again" : "denied");
         return;
       }
       const registration = await navigator.serviceWorker.register("/sw.js", {
@@ -152,11 +157,27 @@ export function WebPushField({
           Browser notifications are unavailable here. Choose Email instead.
         </span>
       ) : null}
-      {state === "denied" ? (
-        <span className={styles.fieldError} role="alert">
-          Notifications are blocked. Enable them in browser settings or choose
-          Email.
-        </span>
+      {state === "denied" || state === "denied-again" ? (
+        <div className={styles.pushDenied}>
+          <span role="alert">
+            <strong>
+              {state === "denied-again"
+                ? "Notifications are still blocked"
+                : "Notifications are blocked"}
+            </strong>
+            <small>
+              Open this site&apos;s settings from the address bar, set
+              Notifications to Allow, then retry.
+            </small>
+          </span>
+          <button
+            className={styles.retryPushButton}
+            type="button"
+            onClick={() => void enable()}
+          >
+            I&apos;ve allowed it — retry
+          </button>
+        </div>
       ) : null}
       {state === "error" ? (
         <span className={styles.fieldError} role="alert">

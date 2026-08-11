@@ -298,6 +298,106 @@ test("enables this browser explicitly and creates a push-only reminder", async (
   ).toBeVisible();
 });
 
+test("recovers browser delivery after notification permission is allowed in site settings", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const browserState = window as Window & {
+      __notificationPermission?: NotificationPermission;
+      __notificationPermissionRequests?: number;
+      __testNotifications?: number;
+    };
+    browserState.__notificationPermission = "denied";
+    browserState.__notificationPermissionRequests = 0;
+    browserState.__testNotifications = 0;
+    Object.defineProperty(window, "Notification", {
+      configurable: true,
+      value: {
+        get permission() {
+          return browserState.__notificationPermission;
+        },
+        requestPermission: () => {
+          browserState.__notificationPermissionRequests =
+            (browserState.__notificationPermissionRequests ?? 0) + 1;
+          browserState.__notificationPermission = "granted";
+          return Promise.resolve("granted");
+        },
+      },
+    });
+    Object.defineProperty(window, "PushManager", {
+      configurable: true,
+      value: true,
+    });
+    const subscription = {
+      toJSON: () => ({
+        endpoint: "https://push.example.com/send/recovered-browser",
+        keys: { p256dh: "A".repeat(87), auth: "B".repeat(22) },
+      }),
+    };
+    const registration = {
+      pushManager: {
+        getSubscription: () => Promise.resolve(null),
+        subscribe: () => Promise.resolve(subscription),
+      },
+      showNotification: () => {
+        browserState.__testNotifications =
+          (browserState.__testNotifications ?? 0) + 1;
+        return Promise.resolve();
+      },
+    };
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: {
+        register: () => Promise.resolve(registration),
+        ready: Promise.resolve(registration),
+      },
+    });
+  });
+
+  await page.goto("/");
+  await page
+    .getByRole("textbox", { name: "What should we remind you about?" })
+    .fill("Review the blocked notification recovery on 2030-08-20 at 9am");
+  await page.getByRole("button", { name: "Set date & time" }).click();
+  await page.getByRole("checkbox", { name: /This browser/ }).check();
+  await expect(page.getByText("Notifications are blocked")).toBeVisible();
+
+  await page.getByRole("button", { name: "I've allowed it — retry" }).click();
+  await expect(page.getByText("Notifications are still blocked")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as Window & { __notificationPermissionRequests?: number })
+          .__notificationPermissionRequests,
+    ),
+  ).toBe(0);
+
+  await page.evaluate(() => {
+    (
+      window as Window & {
+        __notificationPermission?: NotificationPermission;
+      }
+    ).__notificationPermission = "granted";
+  });
+  await page.getByRole("button", { name: "I've allowed it — retry" }).click();
+
+  await expect(page.getByText("Browser notifications enabled")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as Window & { __notificationPermissionRequests?: number })
+          .__notificationPermissionRequests,
+    ),
+  ).toBe(0);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as Window & { __testNotifications?: number })
+          .__testNotifications,
+    ),
+  ).toBe(1);
+});
+
 test("keeps public purpose and labels in server HTML", async ({ request }) => {
   const response = await request.get("/");
   const html = await response.text();

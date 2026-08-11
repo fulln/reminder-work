@@ -232,12 +232,23 @@ export function ReminderComposer({
   );
   const [quickText, setQuickText] = useState("");
   const [quickError, setQuickError] = useState<string | null>(null);
-  const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>(() => {
+  const initialDeliveryMode = (() => {
     const value = fieldValue(actionData, "deliveryMode");
     return value === "web_push" || value === "web_push_email_fallback"
       ? value
       : "email";
-  });
+  })();
+  const [emailSelected, setEmailSelected] = useState(
+    initialDeliveryMode !== "web_push",
+  );
+  const [browserSelected, setBrowserSelected] = useState(
+    initialDeliveryMode !== "email",
+  );
+  const deliveryMode: DeliveryMode = emailSelected
+    ? browserSelected
+      ? "web_push_email_fallback"
+      : "email"
+    : "web_push";
   const [hydrated, setHydrated] = useState(false);
   const [parsedReminder, setParsedReminder] = useState<{
     readonly title: string;
@@ -619,69 +630,89 @@ export function ReminderComposer({
             Delivery
           </legend>
           <div className={styles.deliveryChoices}>
-            {(
-              [
-                ["email", "Email", "Reliable, even when the browser is closed"],
-                [
-                  "web_push",
-                  "This browser",
-                  "System notification on this device",
-                ],
-                [
-                  "web_push_email_fallback",
-                  "Browser + email",
-                  "Email backs up an unavailable push",
-                ],
-              ] as const
-            ).map(([value, title, description]) => (
-              <label className={styles.deliveryChoice} key={value}>
+            <div className={styles.deliveryChoice}>
+              <label
+                className={styles.deliveryChoiceHeader}
+                htmlFor="delivery-email"
+              >
                 <input
-                  type="radio"
-                  name="deliveryMode"
-                  value={value}
-                  checked={deliveryMode === value}
-                  onChange={() => {
-                    setDeliveryMode(value);
+                  id="delivery-email"
+                  type="checkbox"
+                  checked={emailSelected}
+                  onChange={(event) => {
+                    if (!event.target.checked && !browserSelected) return;
+                    setEmailSelected(event.target.checked);
                   }}
                 />
                 <span>
-                  <strong>{title}</strong>
-                  <small>{description}</small>
+                  <strong>Email</strong>
+                  <small>
+                    {browserSelected
+                      ? "Backup when browser delivery is unavailable"
+                      : "Reliable, even when the browser is closed"}
+                  </small>
                 </span>
               </label>
-            ))}
+              {emailSelected ? (
+                <div className={styles.deliveryChoiceBody}>
+                  <label htmlFor="recipientEmail">Email address</label>
+                  <input
+                    id="recipientEmail"
+                    name="recipientEmail"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    defaultValue={fieldValue(actionData, "recipientEmail")}
+                    aria-describedby="recipientEmail-hint recipientEmail-error"
+                    placeholder="you@example.com"
+                  />
+                  <span id="recipientEmail-hint" className={styles.hint}>
+                    We send nothing until this address is verified.
+                  </span>
+                  <FieldError actionData={actionData} name="recipientEmail" />
+                </div>
+              ) : null}
+            </div>
+
+            <div className={styles.deliveryChoice}>
+              <label
+                className={styles.deliveryChoiceHeader}
+                htmlFor="delivery-browser"
+              >
+                <input
+                  id="delivery-browser"
+                  type="checkbox"
+                  checked={browserSelected}
+                  onChange={(event) => {
+                    if (!event.target.checked && !emailSelected) return;
+                    setBrowserSelected(event.target.checked);
+                  }}
+                />
+                <span>
+                  <strong>This browser</strong>
+                  <small>System notification on this device</small>
+                </span>
+              </label>
+              {browserSelected ? (
+                <div className={styles.deliveryChoiceBody}>
+                  <WebPushField
+                    publicKey={rootData?.vapidPublicKey ?? ""}
+                    initialSubscription={fieldValue(
+                      actionData,
+                      "pushSubscription",
+                    )}
+                    fieldError={
+                      actionData?.stage === "input-error" ||
+                      actionData?.stage === "create-error"
+                        ? actionData.fields?.pushSubscription
+                        : undefined
+                    }
+                  />
+                </div>
+              ) : null}
+            </div>
           </div>
-          {deliveryMode === "email" ? null : (
-            <WebPushField
-              publicKey={rootData?.vapidPublicKey ?? ""}
-              initialSubscription={fieldValue(actionData, "pushSubscription")}
-              fieldError={
-                actionData?.stage === "input-error" ||
-                actionData?.stage === "create-error"
-                  ? actionData.fields?.pushSubscription
-                  : undefined
-              }
-            />
-          )}
-          {deliveryMode === "web_push" ? null : (
-            <>
-              <label htmlFor="recipientEmail">Email address</label>
-              <input
-                id="recipientEmail"
-                name="recipientEmail"
-                type="email"
-                required
-                autoComplete="email"
-                defaultValue={fieldValue(actionData, "recipientEmail")}
-                aria-describedby="recipientEmail-hint recipientEmail-error"
-                placeholder="you@example.com"
-              />
-              <span id="recipientEmail-hint" className={styles.hint}>
-                We send nothing until this address is verified.
-              </span>
-              <FieldError actionData={actionData} name="recipientEmail" />
-            </>
-          )}
+          <input type="hidden" name="deliveryMode" value={deliveryMode} />
         </fieldset>
       ) : null}
 

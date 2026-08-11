@@ -24,6 +24,10 @@ test("reviews exact time then reaches email verification", async ({ page }) => {
     .fill("Prepare launch notes on 2026-08-20 at 9am");
   await page.getByRole("button", { name: "Set date & time" }).click();
   await expect(page.getByText("Understood", { exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /Email/ })).toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: /This browser/ }),
+  ).not.toBeChecked();
   await page.getByLabel("Email address").fill("owner@example.com");
   await revealScheduleDetails(page);
   await page
@@ -153,7 +157,12 @@ test("enables this browser explicitly and creates a push-only reminder", async (
     .getByRole("textbox", { name: "What should we remind you about?" })
     .fill("Review the launch notes on 2026-08-20 at 9am");
   await page.getByRole("button", { name: "Set date & time" }).click();
-  await page.getByRole("radio", { name: /This browser/ }).check();
+  await page.getByRole("checkbox", { name: /This browser/ }).check();
+  await expect(page.getByLabel("Email address")).toBeVisible();
+  await expect(
+    page.getByText("Backup when browser delivery is unavailable"),
+  ).toBeVisible();
+  await page.getByRole("checkbox", { name: /Email/ }).uncheck();
   await expect(page.getByLabel("Email address")).toBeHidden();
   await page
     .getByRole("button", { name: "Enable browser notifications" })

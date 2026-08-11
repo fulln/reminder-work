@@ -106,24 +106,33 @@
 }
 
 .deliveryChoice {
-  align-items: flex-start;
   border: 0.0625rem solid var(--color-border);
   border-radius: var(--radius-small);
-  cursor: pointer;
-  display: flex;
-  gap: var(--space-1);
-  padding: var(--space-2);
+  overflow: hidden;
   transition:
     border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
     background-color 160ms ease;
 }
 
-.deliveryChoice:has(input:checked) {
+.deliveryChoice:has(.deliveryChoiceHeader > input:checked) {
   background: color-mix(in srgb, var(--color-signal) 6%, var(--color-surface));
   border-color: var(--color-signal);
 }
 
-.deliveryChoice input {
+.deliveryChoiceHeader {
+  align-items: flex-start;
+  cursor: pointer;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.deliveryChoiceHeader:active {
+  transform: scale(0.99);
+}
+
+.deliveryChoiceHeader > input {
   accent-color: var(--color-signal);
   flex: 0 0 auto;
   height: 1.125rem;
@@ -131,18 +140,31 @@
   width: 1.125rem;
 }
 
-.deliveryChoice span,
+.deliveryChoiceHeader span,
 .pushReady span {
   display: grid;
   gap: 0.125rem;
   min-width: 0;
 }
 
-.deliveryChoice small,
+.deliveryChoiceHeader small,
 .pushReady small {
   color: var(--color-muted);
   font-size: 0.75rem;
   font-weight: 400;
+}
+
+.deliveryChoiceBody {
+  border-top: 0.0625rem solid
+    color-mix(in srgb, var(--color-signal) 24%, var(--color-border));
+  display: grid;
+  gap: var(--space-1);
+  padding: 0 var(--space-2) var(--space-2);
+  padding-top: var(--space-2);
+}
+
+.deliveryChoiceBody .pushField {
+  margin-bottom: 0;
 }
 
 .pushField {

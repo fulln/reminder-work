@@ -173,6 +173,13 @@ test("hands an iCalendar file to the operating system when supported", async ({
     .fill("Prepare launch notes on 2030-08-20 at 9am");
   await page.getByRole("button", { name: "Set date & time" }).click();
   await page.getByLabel("Email address").fill("owner@example.com");
+  await revealScheduleDetails(page);
+  await page
+    .getByLabel("Time zone", { exact: true })
+    .selectOption("Asia/Shanghai");
+  await expect(
+    page.getByText(/2030-08-20 · 09:00 · Asia\/Shanghai/),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Review reminder" }).click();
 
   await page.getByRole("button", { name: "Share to calendar app" }).click();

@@ -4,5 +4,5 @@ export default {
   appDirectory: "src/presentation",
   buildDirectory: "build",
   ssr: true,
-  allowedActionOrigins: ["reminder.work", "*.reminder.work", "localhost:*"],
+  allowedActionOrigins: ["reminders.work", "*.reminders.work", "localhost:*"],
 } satisfies Config;

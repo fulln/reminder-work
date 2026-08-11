@@ -18,7 +18,7 @@ function contextWith(auth: AuthServicePort) {
     requestId: "request-1",
     showLocalVerificationPreview: false,
     auth,
-    authCallbackUrl: "https://reminder.work/auth/callback",
+    authCallbackUrl: "https://reminders.work/auth/callback",
     secureAuthCookie: true,
     reviewReminder: vi.fn(),
     createReminder: () => unavailable("request-1"),
@@ -44,7 +44,7 @@ describe("OAuth relying-site routes", () => {
     };
     const response = await callbackLoader({
       request: new Request(
-        "https://reminder.work/auth/callback?auth=complete&session_token=opaque-token",
+        "https://reminders.work/auth/callback?auth=complete&session_token=opaque-token",
       ),
       context: contextWith(auth),
     } as never);
@@ -65,7 +65,7 @@ describe("OAuth relying-site routes", () => {
       logout: vi.fn().mockResolvedValue(undefined),
     };
     const response = await logoutAction({
-      request: new Request("https://reminder.work/auth/logout", {
+      request: new Request("https://reminders.work/auth/logout", {
         method: "POST",
         headers: { cookie: "reminder_auth_session=opaque-token" },
       }),

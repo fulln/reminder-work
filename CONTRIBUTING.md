@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for helping improve Reminder.work.
+Thank you for helping improve Reminders.work.
 
 ## Development workflow
 

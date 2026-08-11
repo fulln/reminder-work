@@ -20,7 +20,7 @@ files and has no unfinished dependency. Story labels appear only on story-scoped
 - [x] T007 Wire `guard:staged`, `architecture:check`, and `verify` commands into the existing hooks through `package.json`
 
 **Checkpoint**: The empty application builds, the local Worker starts, and both tracked
-hooks invoke project commands only for Reminder.work changes.
+hooks invoke project commands only for Reminders.work changes.
 
 ## Phase 2: Foundational Architecture and Design System
 
@@ -182,4 +182,4 @@ ownership and may be executed concurrently.
 The smallest production-useful slice is T001–T033: toolchain and guards, design/domain
 foundation, the home-page composer, exact time review, Turnstile, D1/outbox persistence,
 and email verification state. It is deployable and independently proves the primary
-Reminder.work promise before management and SEO expansion.
+Reminders.work promise before management and SEO expansion.

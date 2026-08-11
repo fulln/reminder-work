@@ -7,13 +7,13 @@
 **Status**: Draft
 
 **Input**: User description: "Establish the frontend UI style, web experience,
-frontend architecture standards, and code-guarding requirements for Reminder.work."
+frontend architecture standards, and code-guarding requirements for Reminders.work."
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Create a reminder with confidence (Priority: P1)
 
-As a first-time visitor, I can understand what Reminder.work does, enter a reminder,
+As a first-time visitor, I can understand what Reminders.work does, enter a reminder,
 review its exact local and universal time, and proceed to email verification without
 installing an application or learning a task-management system.
 

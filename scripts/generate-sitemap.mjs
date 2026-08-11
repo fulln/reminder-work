@@ -11,7 +11,7 @@ const slugs = [
 const paths = ["/", ...slugs.flatMap((slug) => [`/${slug}`, `/zh/${slug}`])];
 const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${paths.map((path) => `  <url><loc>https://reminder.work${path}</loc></url>`).join("\n")}
+${paths.map((path) => `  <url><loc>https://reminders.work${path}</loc></url>`).join("\n")}
 </urlset>
 `;
 

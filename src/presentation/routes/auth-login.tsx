@@ -6,7 +6,7 @@ import type { Route } from "./+types/auth-login";
 import styles from "./auth-login.module.css";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "Sign in — Reminder.work" },
+  { title: "Sign in — Reminders.work" },
   { name: "robots", content: "noindex, nofollow" },
 ];
 
@@ -29,13 +29,13 @@ export default function AuthLogin({ loaderData }: Route.ComponentProps) {
         <section className={styles.card} aria-labelledby="sign-in-title">
           <p className="eyebrow">Secure sign in</p>
           <h1 id="sign-in-title">
-            {user === null ? "Continue to Reminder.work" : "You’re signed in"}
+            {user === null ? "Continue to Reminders.work" : "You’re signed in"}
           </h1>
           {user === null ? (
             <>
               <p className={styles.lede}>
                 Use an existing account. Your provider password is never shared
-                with Reminder.work.
+                with Reminders.work.
               </p>
               {loaderData.hasError ? (
                 <p className={styles.error} role="alert">
@@ -62,7 +62,7 @@ export default function AuthLogin({ loaderData }: Route.ComponentProps) {
               </div>
               <p className={styles.privacyNote}>
                 Authentication is handled by our shared Cloudflare identity
-                service. Reminder.work stores only an opaque session cookie.
+                service. Reminders.work stores only an opaque session cookie.
               </p>
             </>
           ) : (

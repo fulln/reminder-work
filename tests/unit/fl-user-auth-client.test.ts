@@ -20,7 +20,7 @@ describe("FlUserAuthClient", () => {
 
     const result = await client.startOAuth(
       "google",
-      "https://reminder.work/auth/callback",
+      "https://reminders.work/auth/callback",
     );
 
     expect(result.correlationId).toBe("corr-1");
@@ -30,7 +30,7 @@ describe("FlUserAuthClient", () => {
         method: "POST",
         body: JSON.stringify({
           relyingWebsiteId: "reminder-work",
-          returnDestination: "https://reminder.work/auth/callback",
+          returnDestination: "https://reminders.work/auth/callback",
         }),
       }),
     );
@@ -80,7 +80,7 @@ describe("FlUserAuthClient", () => {
     });
 
     await expect(
-      client.startOAuth("github", "https://reminder.work/auth/callback"),
+      client.startOAuth("github", "https://reminders.work/auth/callback"),
     ).rejects.toThrow("temporarily unavailable");
   });
 });

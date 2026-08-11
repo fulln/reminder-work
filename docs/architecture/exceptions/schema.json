@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Reminder.work governed architecture exception",
+  "title": "Reminders.work governed architecture exception",
   "type": "object",
   "additionalProperties": false,
   "required": ["ruleId", "owner", "rationale", "risk", "expiresWhen", "removalTask", "affectedPaths"],

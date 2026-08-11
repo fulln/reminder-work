@@ -4,7 +4,7 @@ import { applicationServicesContext } from "../server-context";
 import type { Route } from "./+types/unsubscribe";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "Unsubscribe — Reminder.work" },
+  { title: "Unsubscribe — Reminders.work" },
   { name: "robots", content: "noindex, nofollow" },
 ];
 

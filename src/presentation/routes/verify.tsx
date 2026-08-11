@@ -4,7 +4,7 @@ import { applicationServicesContext } from "../server-context";
 import type { Route } from "./+types/verify";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "Verify reminder — Reminder.work" },
+  { title: "Verify reminder — Reminders.work" },
   { name: "robots", content: "noindex, nofollow" },
 ];
 
@@ -39,7 +39,7 @@ export default function VerifyReminder({ actionData }: Route.ComponentProps) {
       ) : (
         <>
           <p>
-            Confirm that you control the recipient address before Reminder.work
+            Confirm that you control the recipient address before Reminders.work
             schedules anything.
           </p>
           <Form method="post">

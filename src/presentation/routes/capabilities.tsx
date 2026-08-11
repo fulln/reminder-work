@@ -36,25 +36,25 @@ export const meta: Route.MetaFunction = ({ loaderData }) => {
     {
       tagName: "link",
       rel: "canonical",
-      href: `https://reminder.work${canonicalPath}`,
+      href: `https://reminders.work${canonicalPath}`,
     },
     {
       tagName: "link",
       rel: "alternate",
       hrefLang: "en",
-      href: `https://reminder.work/${preset.slug}`,
+      href: `https://reminders.work/${preset.slug}`,
     },
     {
       tagName: "link",
       rel: "alternate",
       hrefLang: "zh-CN",
-      href: `https://reminder.work/zh/${preset.slug}`,
+      href: `https://reminders.work/zh/${preset.slug}`,
     },
     {
       tagName: "link",
       rel: "alternate",
       hrefLang: "x-default",
-      href: `https://reminder.work/${preset.slug}`,
+      href: `https://reminders.work/${preset.slug}`,
     },
   ];
 };

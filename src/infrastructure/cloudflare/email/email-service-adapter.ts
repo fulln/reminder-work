@@ -18,7 +18,7 @@ export class CloudflareEmailServiceAdapter implements ReminderEmailPort {
 
   async sendReminder(message: ReminderEmail): Promise<void> {
     await this.binding.send({
-      from: { email: this.from, name: "Reminder.work" },
+      from: { email: this.from, name: "Reminders.work" },
       to: [message.to],
       subject: `Reminder: ${message.title}`,
       text: `${message.title}\nDue: ${message.dueAt}\nManage: ${message.manageUrl}\nUnsubscribe: ${message.unsubscribeUrl}`,

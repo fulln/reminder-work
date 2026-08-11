@@ -2,7 +2,7 @@
 
 ## Direction
 
-Reminder.work feels like a precise workday instrument. The scheduled instant is the
+Reminders.work feels like a precise workday instrument. The scheduled instant is the
 strongest datum; the time rail connects definition, waiting, due point, and completion.
 Surfaces are quiet and editorial, not a card-filled administration dashboard.
 

@@ -6,7 +6,7 @@ project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 hooks_dir="$repo_root/.git/hooks"
 
 if [[ "$project_dir" != "$repo_root" ]]; then
-  echo "install-git-hooks: Reminder.work must be the active repository root" >&2
+  echo "install-git-hooks: Reminders.work must be the active repository root" >&2
   exit 1
 fi
 
@@ -23,4 +23,4 @@ for hook in pre-commit pre-push; do
   ln -sfn "$relative_source" "$target_path"
 done
 
-echo "install-git-hooks: installed pre-commit and pre-push for Reminder.work"
+echo "install-git-hooks: installed pre-commit and pre-push for Reminders.work"

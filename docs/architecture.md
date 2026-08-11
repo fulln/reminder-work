@@ -1,13 +1,13 @@
-# Reminder.work 强相关性产品与技术架构
+# Reminders.work 强相关性产品与技术架构
 
 > 状态：Proposed v2
 > 日期：2026-08-10
-> 产品：**Reminder.work — Free Online Reminders for Tasks, Meetings and Deadlines**
+> 产品：**Reminders.work — Free Online Reminders for Tasks, Meetings and Deadlines**
 > 架构约束：生产环境使用 Cloudflare Workers Paid，核心链路全部采用 Cloudflare 原生能力。
 
 ## 1. 决策摘要
 
-Reminder.work 不做泛待办、项目管理或团队协作平台。它只解决一个完整问题：
+Reminders.work 不做泛待办、项目管理或团队协作平台。它只解决一个完整问题：
 
 > 当用户有一件工作不能忘记时，无需安装应用，通过网页快速设定提醒；系统在正确时区可靠送达，并允许用户完成、延后或持续提醒直到完成。
 
@@ -622,7 +622,7 @@ type ReminderPreset = {
 - 用户不能控制 From、Reply-To、HTML 或邮件模板。
 - action URL 只允许 `https`，邮件中清楚显示目标域名。
 - 每封邮件包含取消、全部退订、隐私和举报入口。
-- SPF、DKIM、DMARC 使用 `send.reminder.work`。
+- SPF、DKIM、DMARC 使用 `send.reminders.work`。
 - hard bounce、complaint 和 unsubscribe 在发送前同步检查。
 
 ### 11.3 Web 安全
@@ -684,8 +684,8 @@ Workers Paid 已确定。Email Sending 当前每月包含 3,000 封，之后每 
 | 环境 | 域名 | 隔离 |
 |---|---|---|
 | local | localhost | 本地 D1、测试 Email adapter |
-| staging | staging.reminder.work | 独立 D1、Queue、Workflow、Turnstile、key |
-| production | reminder.work | 独立生产资源 |
+| staging | staging.reminders.work | 独立 D1、Queue、Workflow、Turnstile、key |
+| production | reminders.work | 独立生产资源 |
 
 ### 13.2 首次上线
 
@@ -693,7 +693,7 @@ Workers Paid 已确定。Email Sending 当前每月包含 3,000 封，之后每 
 2. apex 绑定 Worker Custom Domain，`www` 301 到 apex。
 3. 部署首页和强相关能力页，不开放发送。
 4. 创建 D1、Workflow、Queues、DLQs 和 Turnstile。
-5. 启用 `send.reminder.work`，配置 SPF/DKIM/DMARC。
+5. 启用 `send.reminders.work`，配置 SPF/DKIM/DMARC。
 6. 建立 Email Sending Events subscription。
 7. 验证匿名一次性提醒全链路。
 8. 小流量开放，观察 schedule lag、bounce、complaint。
@@ -862,7 +862,7 @@ Email Service 故障 30 分钟：网站继续持久化；Queue 保留；backlog 
 
 ### 原因
 
-- 与 `reminder.work` 域名语义和目标搜索词完全一致。
+- 与 `reminders.work` 域名语义和目标搜索词完全一致。
 - 免费网页工具提供获客，recurring/until_done 提供留存。
 - 同一 Reminder 聚合覆盖工作场景，无需泛任务系统。
 - Cloudflare Paid 可以覆盖静态、计算、存储、调度、队列、邮件和防滥用。

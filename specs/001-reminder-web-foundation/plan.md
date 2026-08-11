@@ -4,7 +4,7 @@
 
 ## Summary
 
-Build the first coherent Reminder.work web surface: six intent-specific public pages,
+Build the first coherent Reminders.work web surface: six intent-specific public pages,
 a shared reminder composer, secure management states, and an enforceable frontend
 architecture. The product will be a TypeScript modular monolith deployed to Cloudflare
 Workers Paid. React Router framework mode provides server-rendered public HTML and form

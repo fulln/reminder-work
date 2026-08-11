@@ -1,6 +1,6 @@
-# Reminder.work Git hooks
+# Reminders.work Git hooks
 
-These hooks are tracked with the standalone Reminder.work repository and installed as
+These hooks are tracked with the standalone Reminders.work repository and installed as
 symlinks in its `.git/hooks` directory.
 
 - `pre-commit` runs when repository files are staged. It rejects likely secret files,

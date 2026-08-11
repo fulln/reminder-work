@@ -3,7 +3,7 @@ import { ReminderManagement } from "../features/reminder-management/ReminderMana
 import type { Route } from "./+types/manage";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "Manage reminder — Reminder.work" },
+  { title: "Manage reminder — Reminders.work" },
   { name: "robots", content: "noindex, nofollow" },
 ];
 
@@ -87,7 +87,7 @@ export default function ManageReminderRoute({
 function Unavailable() {
   return (
     <main id="main-content" className="error-page">
-      <p className="eyebrow">Reminder.work</p>
+      <p className="eyebrow">Reminders.work</p>
       <h1>This link is unavailable</h1>
       <p>It may be invalid or expired. No reminder details are shown.</p>
       <a href="/">Create a reminder</a>

@@ -78,7 +78,7 @@ describe("delivery safety", () => {
       },
       email,
       logger: { info: vi.fn(), error: vi.fn() },
-      origin: "https://reminder.work",
+      origin: "https://reminders.work",
       now: () => new Date("2026-08-10T00:00:00.000Z"),
     };
     const message = () => ({

@@ -64,7 +64,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   const notFound = isRouteErrorResponse(error) && error.status === 404;
   return (
     <main id="main-content" className="error-page">
-      <p className="eyebrow">Reminder.work</p>
+      <p className="eyebrow">Reminders.work</p>
       <h1>
         {notFound ? "This page could not be found" : "Something went wrong"}
       </h1>

@@ -8,7 +8,7 @@ import type { Route } from "./+types/home";
 import type { ApplicationServices } from "../server-context";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "Reminder.work — Free Online Reminders for Work" },
+  { title: "Reminders.work — Free Online Reminders for Work" },
   {
     name: "description",
     content:

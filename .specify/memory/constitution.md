@@ -15,7 +15,7 @@ Sync Impact Report
 - Removed sections: none (initial ratification)
 - Deferred items: none
 -->
-# Reminder.work Constitution
+# Reminders.work Constitution
 
 ## Core Principles
 

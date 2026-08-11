@@ -4,4 +4,4 @@ Disallow: /verify/
 Disallow: /manage/
 Disallow: /unsubscribe/
 
-Sitemap: https://reminder.work/sitemap.xml
+Sitemap: https://reminders.work/sitemap.xml

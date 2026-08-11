@@ -14,7 +14,7 @@ describe("LocalTurnstileAdapter", () => {
 
   it("never treats an HTTPS deployment as local", async () => {
     await expect(
-      new LocalTurnstileAdapter("https://reminder.work").verify("test-pass"),
+      new LocalTurnstileAdapter("https://reminders.work").verify("test-pass"),
     ).resolves.toBe(false);
   });
 });

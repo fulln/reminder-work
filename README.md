@@ -1,11 +1,11 @@
-# Reminder.work
+# Reminders.work
 
 Free online reminders for tasks, meetings, and deadlines.
 
 [![Verify](https://github.com/fulln/reminder-work/actions/workflows/verify.yml/badge.svg)](https://github.com/fulln/reminder-work/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Reminder.work is a focused, install-free reminder service. It lets people create an
+Reminders.work is a focused, install-free reminder service. It lets people create an
 email reminder from the web, verify the recipient, receive it at the correct local
 time, and manage it through secure links.
 

@@ -5,6 +5,16 @@
   "compatibility_date": "2026-08-08",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "reminders.work",
+      "custom_domain": true,
+    },
+    {
+      "pattern": "www.reminders.work",
+      "custom_domain": true,
+    },
+  ],
   "assets": {
     "binding": "ASSETS",
   },
@@ -51,11 +61,11 @@
     },
   ],
   "vars": {
-    "APP_ORIGIN": "https://reminder.work",
+    "APP_ORIGIN": "https://reminders.work",
     "AUTH_BASE_URL": "https://auth.elemvisual.com",
     "AUTH_RELYING_WEBSITE_ID": "reminder-work",
     "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
-    "EMAIL_FROM": "reminders@reminder.work",
+    "EMAIL_FROM": "reminders@reminders.work",
   },
   "observability": {
     "enabled": true,

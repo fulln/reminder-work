@@ -23,8 +23,8 @@ export function SiteHeader({
 
   return (
     <header className="site-header">
-      <a className="wordmark" href="/" aria-label="Reminder.work home">
-        Reminder<span>.work</span>
+      <a className="wordmark" href="/" aria-label="Reminders.work home">
+        Reminders<span>.work</span>
       </a>
       <div className={styles.controls}>
         {context ? <span className={styles.context}>{context}</span> : null}

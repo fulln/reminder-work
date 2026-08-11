@@ -4,9 +4,13 @@ import type { KeyboardEvent } from "react";
 
 import type { CreateReminderAccepted } from "../../../application/use-cases/create-reminder";
 import type { CalendarExportData } from "../../../application/contracts/calendar-export";
+import { exportReminderCalendar } from "../../../application/use-cases/export-calendar";
 import type { ReviewedReminder } from "../../../application/use-cases/review-reminder";
+import {
+  interpretReminderText,
+  type ReminderInterpretationSource,
+} from "../../../application/use-cases/interpret-reminder-text";
 import type { CapabilityPreset } from "../../../content/capability-presets";
-import { parseReminderText } from "../../../domain/reminder/parse-reminder-text";
 import type { RecurrenceRule } from "../../../domain/reminder/schedule";
 import type { DeliveryMode } from "../../../domain/reminder/delivery-plan";
 import styles from "./ReminderComposer.module.css";
@@ -14,6 +18,7 @@ import { ActionButton } from "../../ui/ActionButton";
 import type { loader as rootLoader } from "../../root";
 import { TurnstileField } from "./TurnstileField";
 import { WebPushField } from "./WebPushField";
+import { createChromeReminderNormalizer } from "../../browser/chrome-reminder-normalizer";
 
 type PendingCreatedResult = Omit<
   Extract<CreateReminderAccepted, { readonly state: "pending_verification" }>,
@@ -219,11 +224,56 @@ function CalendarExportForm({
 }: {
   readonly calendar: CalendarExportData;
 }) {
+  const [systemShareAvailable, setSystemShareAvailable] = useState(false);
+  const [sharingCalendar, setSharingCalendar] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const probe = new File(
+        ["BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n"],
+        "reminder.ics",
+        { type: "text/calendar" },
+      );
+      setSystemShareAvailable(
+        typeof navigator.share === "function" &&
+          typeof navigator.canShare === "function" &&
+          navigator.canShare({ files: [probe] }),
+      );
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+
   return (
     <form
       action="/calendar.ics"
       method="post"
       className={styles.calendarExport}
+      onSubmit={(event) => {
+        if (!systemShareAvailable) return;
+        event.preventDefault();
+        const form = event.currentTarget;
+        setSharingCalendar(true);
+        const contents = exportReminderCalendar(calendar, {
+          now: new Date(),
+          origin: window.location.origin,
+        });
+        const file = new File([contents], "reminder.ics", {
+          type: "text/calendar",
+        });
+        void navigator
+          .share({ files: [file], title: calendar.title })
+          .catch((error: unknown) => {
+            if (error instanceof DOMException && error.name === "AbortError") {
+              return;
+            }
+            HTMLFormElement.prototype.submit.call(form);
+          })
+          .finally(() => {
+            setSharingCalendar(false);
+          });
+      }}
     >
       <input type="hidden" name="title" value={calendar.title} />
       <input
@@ -234,11 +284,23 @@ function CalendarExportForm({
       {calendar.managePath === undefined ? null : (
         <input type="hidden" name="managePath" value={calendar.managePath} />
       )}
-      <button type="submit" className={styles.calendarButton}>
+      <button
+        type="submit"
+        className={styles.calendarButton}
+        disabled={sharingCalendar}
+      >
         <span aria-hidden="true">＋</span>
-        Add to calendar
+        {sharingCalendar
+          ? "Opening calendar…"
+          : systemShareAvailable
+            ? "Share to calendar app"
+            : "Add to calendar"}
       </button>
-      <small>Apple Calendar · Google Calendar · Outlook</small>
+      <small>
+        {systemShareAvailable
+          ? "Uses your system share sheet"
+          : "Apple Calendar · Google Calendar · Outlook"}
+      </small>
     </form>
   );
 }
@@ -263,6 +325,10 @@ export function ReminderComposer({
   );
   const [quickText, setQuickText] = useState("");
   const [quickError, setQuickError] = useState<string | null>(null);
+  const [quickBusy, setQuickBusy] = useState(false);
+  const [interpretationSource, setInterpretationSource] =
+    useState<ReminderInterpretationSource>("smart-rules");
+  const quickRequest = useRef(0);
   const initialDeliveryMode = (() => {
     const value = fieldValue(actionData, "deliveryMode");
     return value === "web_push" || value === "web_push_email_fallback"
@@ -326,19 +392,25 @@ export function ReminderComposer({
     manualExpanded ||
     parsedReminder !== null;
 
-  function applyQuickReminder(timeZoneOverride?: string): void {
+  async function applyQuickReminder(timeZoneOverride?: string): Promise<void> {
     const form = formRef.current;
     if (form === null) return;
+    const request = ++quickRequest.current;
     const timeZoneControl = form.elements.namedItem("timeZone");
     const timeZone =
       timeZoneOverride ??
       (timeZoneControl instanceof HTMLSelectElement
         ? timeZoneControl.value
         : "UTC");
-    const result = parseReminderText(quickText, {
-      now: new Date().toISOString(),
-      timeZone,
-    });
+    setQuickBusy(true);
+    const interpretation = await interpretReminderText(
+      quickText,
+      { now: new Date().toISOString(), timeZone },
+      createChromeReminderNormalizer(),
+    );
+    if (request !== quickRequest.current) return;
+    setQuickBusy(false);
+    const { result } = interpretation;
     if (!result.ok) {
       setParsedReminder(null);
       setQuickError(result.message);
@@ -349,6 +421,7 @@ export function ReminderComposer({
     setFormValue(form, "localDate", result.value.localDate);
     setFormValue(form, "localTime", result.value.localTime);
     setParsedReminder(result.value);
+    setInterpretationSource(interpretation.source);
     setQuickError(null);
     setManualExpanded(false);
     setScheduleExpanded(false);
@@ -357,7 +430,7 @@ export function ReminderComposer({
   function handleQuickKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
     if (event.key !== "Enter") return;
     event.preventDefault();
-    applyQuickReminder();
+    void applyQuickReminder();
   }
 
   if (actionData?.stage === "created") {
@@ -530,11 +603,14 @@ export function ReminderComposer({
             type="text"
             disabled={!hydrated}
             autoComplete="off"
+            maxLength={500}
             value={quickText}
             onChange={(event) => {
+              quickRequest.current += 1;
               setQuickText(event.target.value);
               setQuickError(null);
               setParsedReminder(null);
+              setQuickBusy(false);
             }}
             onKeyDown={handleQuickKeyDown}
             aria-describedby="quickReminder-hint quickReminder-error"
@@ -543,6 +619,7 @@ export function ReminderComposer({
           />
           <span id="quickReminder-hint" className={styles.hint}>
             Try “in 30 minutes”, “next Monday”, or “every weekday at 9am”.
+            Compatible desktop Chrome can use on-device AI.
           </span>
           {quickError === null ? null : (
             <span
@@ -557,18 +634,23 @@ export function ReminderComposer({
             type="button"
             className={styles.quickButton}
             onClick={() => {
-              applyQuickReminder();
+              void applyQuickReminder();
             }}
-            disabled={!hydrated}
+            disabled={!hydrated || quickBusy}
           >
-            Set date &amp; time
+            {quickBusy ? "Understanding…" : "Set date & time"}
           </button>
         </fieldset>
       ) : null}
 
       {parsedReminder === null || manualExpanded ? null : (
         <section className={styles.parsedPreview} aria-live="polite">
-          <span className={styles.parsedMarker}>Understood</span>
+          <span className={styles.parsedMarker}>
+            Understood ·{" "}
+            {interpretationSource === "on-device-ai"
+              ? "On-device AI"
+              : "Smart rules"}
+          </span>
           <strong>{parsedReminder.title}</strong>
           <span>
             {parsedReminder.localDate} · {parsedReminder.localTime} ·{" "}
@@ -789,7 +871,7 @@ export function ReminderComposer({
             }
             onChange={(event) => {
               if (parsedReminder !== null) {
-                applyQuickReminder(event.target.value);
+                void applyQuickReminder(event.target.value);
               }
             }}
             aria-describedby="timeZone-hint timeZone-error"

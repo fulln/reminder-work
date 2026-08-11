@@ -24,7 +24,7 @@ test("reviews exact time then reaches email verification", async ({ page }) => {
     .getByRole("textbox", { name: "What should we remind you about?" })
     .fill("Prepare launch notes on 2026-08-20 at 9am");
   await page.getByRole("button", { name: "Set date & time" }).click();
-  await expect(page.getByText("Understood", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Understood · Smart rules/)).toBeVisible();
   await expect(page.getByRole("checkbox", { name: /Email/ })).toBeChecked();
   await expect(
     page.getByRole("checkbox", { name: /This browser/ }),
@@ -104,6 +104,86 @@ test("keeps quick and manual entry as mutually exclusive modes", async ({
   await page.getByRole("button", { name: "Use quick create" }).click();
   await expect(quickInput).toBeVisible();
   await expect(manualInput).toBeHidden();
+});
+
+test("uses Chrome on-device AI before deterministic reminder parsing", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const browserState = window as Window & { __localModelPrompts?: number };
+    browserState.__localModelPrompts = 0;
+    Object.defineProperty(globalThis, "LanguageModel", {
+      configurable: true,
+      value: {
+        availability: () => Promise.resolve("available"),
+        create: () =>
+          Promise.resolve({
+            prompt: () => {
+              browserState.__localModelPrompts =
+                (browserState.__localModelPrompts ?? 0) + 1;
+              return Promise.resolve(
+                JSON.stringify({
+                  normalizedText: "Call Jordan on 2030-08-20 at 09:00",
+                }),
+              );
+            },
+          }),
+      },
+    });
+  });
+
+  await page.goto("/");
+  await page
+    .getByRole("textbox", { name: "What should we remind you about?" })
+    .fill("Please untangle this reminder for Jordan");
+  await page.getByRole("button", { name: "Set date & time" }).click();
+
+  await expect(page.getByText(/Understood · On-device AI/)).toBeVisible();
+  await expect(page.getByText("Call Jordan", { exact: true })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as Window & { __localModelPrompts?: number })
+          .__localModelPrompts,
+    ),
+  ).toBe(1);
+});
+
+test("hands an iCalendar file to the operating system when supported", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const browserState = window as Window & { __sharedCalendar?: string };
+    Object.defineProperty(navigator, "canShare", {
+      configurable: true,
+      value: () => true,
+    });
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: async (data: ShareData) => {
+        const file = data.files?.[0];
+        browserState.__sharedCalendar = await file?.text();
+      },
+    });
+  });
+
+  await page.goto("/");
+  await page
+    .getByRole("textbox", { name: "What should we remind you about?" })
+    .fill("Prepare launch notes on 2030-08-20 at 9am");
+  await page.getByRole("button", { name: "Set date & time" }).click();
+  await page.getByLabel("Email address").fill("owner@example.com");
+  await page.getByRole("button", { name: "Review reminder" }).click();
+
+  await page.getByRole("button", { name: "Share to calendar app" }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as Window & { __sharedCalendar?: string }).__sharedCalendar,
+      ),
+    )
+    .toContain("DTSTART;TZID=Asia/Shanghai:20300820T090000");
 });
 
 test("enables this browser explicitly and creates a push-only reminder", async ({

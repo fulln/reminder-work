@@ -1,6 +1,6 @@
 # Reminders.work 强相关性产品与技术架构
 
-> 状态：Accepted v4
+> 状态：Accepted v5
 > 日期：2026-08-11
 > 产品：**Reminders.work — Free Online Reminders for Tasks, Meetings and Deadlines**
 > 架构约束：生产环境使用 Cloudflare Workers Paid，核心链路全部采用 Cloudflare 原生能力。
@@ -31,6 +31,11 @@ Reminders.work 不做泛待办、项目管理或团队协作平台。它只解�
 `.ics` 是 Schedule 的只读边界转换器：帮助用户把已确认的时间放入现有日历，
 但不属于 Delivery channel，也不成为 Reminder 的事实源。
 
+Quick Create 采用渐进增强的双层解释器：符合条件的桌面 Chrome 优先通过
+Prompt API 在设备内把自然语言归一化为受支持的 Reminder 表达；最终结果仍必须
+通过确定性领域解析器。API、模型、语言或硬件不可用，以及模型结果无效或超时，
+均静默降级为相同的规则解析器，不调用云端 AI。
+
 技术上采用 Cloudflare 原生模块化单体：
 
 - Workers + Static Assets：SEO 页面、交互界面和 API。
@@ -54,22 +59,22 @@ Reminders.work 不做泛待办、项目管理或团队协作平台。它只解�
 
 准入条件：`Reminder = 2`，且总分至少 5。未达到的功能不进入核心架构。
 
-| 能力 | Reminder | Work | Web | 决策 |
-|---|---:|---:|---:|---|
-| 一次性邮件提醒 | 2 | 2 | 2 | P0 |
-| 每日/每周/每月重复 | 2 | 2 | 2 | P0 |
-| 完成、延后、改期 | 2 | 2 | 2 | P0 |
-| 提醒直到完成 | 2 | 2 | 2 | P0 差异化 |
-| Meeting/Deadline 模板 | 2 | 2 | 2 | P0 |
-| 多次提前提醒 | 2 | 2 | 2 | P1 |
-| 浏览器通知 / Web Push | 2 | 1 | 2 | P1，复用统一调度链 |
-| `.ics` 下载 | 1 | 2 | 2 | 辅助能力，不建独立域 |
-| 完整任务看板 | 0 | 2 | 1 | 排除 |
-| 团队聊天/文档 | 0 | 1 | 1 | 排除 |
-| 通用 AI 助手 | 1 | 1 | 1 | 排除 |
-| 营销邮件群发 | 1 | 0 | 2 | 排除且禁止 |
-| 复杂 CRM/客户管理 | 0 | 2 | 1 | 排除 |
-| 任意第三方集成市场 | 1 | 1 | 1 | 暂不建设 |
+| 能力                  | Reminder | Work | Web | 决策                 |
+| --------------------- | -------: | ---: | --: | -------------------- |
+| 一次性邮件提醒        |        2 |    2 |   2 | P0                   |
+| 每日/每周/每月重复    |        2 |    2 |   2 | P0                   |
+| 完成、延后、改期      |        2 |    2 |   2 | P0                   |
+| 提醒直到完成          |        2 |    2 |   2 | P0 差异化            |
+| Meeting/Deadline 模板 |        2 |    2 |   2 | P0                   |
+| 多次提前提醒          |        2 |    2 |   2 | P1                   |
+| 浏览器通知 / Web Push |        2 |    1 |   2 | P1，复用统一调度链   |
+| `.ics` 下载           |        1 |    2 |   2 | 辅助能力，不建独立域 |
+| 完整任务看板          |        0 |    2 |   1 | 排除                 |
+| 团队聊天/文档         |        0 |    1 |   1 | 排除                 |
+| 通用 AI 助手          |        1 |    1 |   1 | 排除                 |
+| 营销邮件群发          |        1 |    0 |   2 | 排除且禁止           |
+| 复杂 CRM/客户管理     |        0 |    2 |   1 | 排除                 |
+| 任意第三方集成市场    |        1 |    1 |   1 | 暂不建设             |
 
 ### 2.2 产品能力边界
 
@@ -84,15 +89,15 @@ Reminders.work 不做泛待办、项目管理或团队协作平台。它只解�
 
 ### 2.3 搜索意图必须对应真实能力
 
-| URL | 搜索意图 | 必须提供的真实能力 |
-|---|---|---|
-| `/` | free online reminder | 首页直接创建提醒 |
-| `/online-reminder` | online reminder | 无安装、匿名创建 |
-| `/email-reminder` | email reminder | 邮箱验证、送达与退订说明 |
-| `/recurring-reminder` | recurring reminder | daily/weekly/monthly 创建器 |
-| `/meeting-reminder` | meeting reminder | 提前量、会议链接、follow-up |
-| `/deadline-reminder` | deadline reminder | 多阶段提醒、overdue、until done |
-| `/follow-up-reminder` | follow up reminder | 未完成继续提醒 |
+| URL                   | 搜索意图             | 必须提供的真实能力              |
+| --------------------- | -------------------- | ------------------------------- |
+| `/`                   | free online reminder | 首页直接创建提醒                |
+| `/online-reminder`    | online reminder      | 无安装、匿名创建                |
+| `/email-reminder`     | email reminder       | 邮箱验证、送达与退订说明        |
+| `/recurring-reminder` | recurring reminder   | daily/weekly/monthly 创建器     |
+| `/meeting-reminder`   | meeting reminder     | 提前量、会议链接、follow-up     |
+| `/deadline-reminder`  | deadline reminder    | 多阶段提醒、overdue、until done |
+| `/follow-up-reminder` | follow up reminder   | 未完成继续提醒                  |
 
 页面不能只是换标题；每个页面使用同一创建内核，但预设不同字段、说明、示例和结果预览。
 
@@ -152,16 +157,16 @@ Reminders.work 不做泛待办、项目管理或团队协作平台。它只解�
 
 首发 SLO：
 
-| 指标 | 目标 |
-|---|---|
-| Web/API 可用性 | 月度 99.9% |
-| API p95 | < 300 ms，不含邮件送达 |
-| 到期至 Email Service accepted | p95 ≤ 30 秒，p99 ≤ 2 分钟 |
-| 未终态 occurrence 可见性 | 超过 15 分钟必须告警 |
-| 正常路径重复发送 | < 0.1%，不承诺严格 exactly-once |
-| RTO | ≤ 4 小时 |
-| RPO | 目标 ≤ 15 分钟，以上线前恢复演练为准 |
-| 可访问性 | 核心流程 WCAG 2.2 AA |
+| 指标                          | 目标                                 |
+| ----------------------------- | ------------------------------------ |
+| Web/API 可用性                | 月度 99.9%                           |
+| API p95                       | < 300 ms，不含邮件送达               |
+| 到期至 Email Service accepted | p95 ≤ 30 秒，p99 ≤ 2 分钟            |
+| 未终态 occurrence 可见性      | 超过 15 分钟必须告警                 |
+| 正常路径重复发送              | < 0.1%，不承诺严格 exactly-once      |
+| RTO                           | ≤ 4 小时                             |
+| RPO                           | 目标 ≤ 15 分钟，以上线前恢复演练为准 |
+| 可访问性                      | 核心流程 WCAG 2.2 AA                 |
 
 首阶段容量假设：10,000 用户、1,000,000 条提醒、100,000 封/天、峰值创建低于 100 条/秒。邮件日额度批准是公测门禁。
 
@@ -170,19 +175,10 @@ Reminders.work 不做泛待办、项目管理或团队协作平台。它只解�
 ### 5.1 唯一聚合根：Reminder
 
 ```ts
-type ReminderKind =
-  | "general"
-  | "task"
-  | "meeting"
-  | "deadline"
-  | "follow_up";
+type ReminderKind = "general" | "task" | "meeting" | "deadline" | "follow_up";
 
 type ReminderStatus =
-  | "pending_verification"
-  | "scheduled"
-  | "paused"
-  | "completed"
-  | "cancelled";
+  "pending_verification" | "scheduled" | "paused" | "completed" | "cancelled";
 
 type Reminder = {
   id: string;
@@ -247,8 +243,7 @@ type Schedule =
 type DeliveryPlan = {
   mode: "email" | "web_push" | "web_push_email_fallback";
   targets: Array<
-    | { channel: "email" }
-    | { channel: "web_push"; subscriptionId: string }
+    { channel: "email" } | { channel: "web_push"; subscriptionId: string }
   >;
   leadOffsetsMinutes: number[]; // e.g. [1440, 60, 0]
 };
@@ -326,19 +321,19 @@ stateDiagram-v2
 
 ### 6.1 产品边界方案
 
-| 方案 | 优点 | 缺点 | 决策 |
-|---|---|---|---|
-| 泛生产力套件 | 功能多、想象空间大 | 与域名搜索意图稀释，研发面过宽 | 拒绝 |
-| 单页免费小工具 | 上线极快、SEO 直接 | 无留存、无确认闭环、重复提醒弱 | 不足 |
-| 提醒闭环产品 | 与域名和关键词一致，可从免费工具增长到付费 | 必须认真处理调度和邮件信誉 | **推荐** |
+| 方案           | 优点                                       | 缺点                           | 决策     |
+| -------------- | ------------------------------------------ | ------------------------------ | -------- |
+| 泛生产力套件   | 功能多、想象空间大                         | 与域名搜索意图稀释，研发面过宽 | 拒绝     |
+| 单页免费小工具 | 上线极快、SEO 直接                         | 无留存、无确认闭环、重复提醒弱 | 不足     |
+| 提醒闭环产品   | 与域名和关键词一致，可从免费工具增长到付费 | 必须认真处理调度和邮件信誉     | **推荐** |
 
 ### 6.2 调度方案
 
-| 方案 | 精度 | 复杂度 | 扩展性 | 决策 |
-|---|---:|---:|---:|---|
-| Cron 每分钟扫描 D1 | 中 | 低 | 中低 | 只用于恢复 |
-| 每个 Reminder Version 一个 Workflow | 高 | 中 | 高 | **正常路径** |
-| Durable Object Alarm 时间桶 | 高 | 高 | 高 | 达到平台限制后复审 |
+| 方案                                | 精度 | 复杂度 | 扩展性 | 决策               |
+| ----------------------------------- | ---: | -----: | -----: | ------------------ |
+| Cron 每分钟扫描 D1                  |   中 |     低 |   中低 | 只用于恢复         |
+| 每个 Reminder Version 一个 Workflow |   高 |     中 |     高 | **正常路径**       |
+| Durable Object Alarm 时间桶         |   高 |     高 |     高 | 达到平台限制后复审 |
 
 Workflow 推荐原因：最长 sleep 365 天、waiting 实例不占并发，适合大量休眠提醒。D1 与 Workflow 没有跨服务事务，因此必须保留 outbox 和 Cron reconciler。
 
@@ -406,18 +401,18 @@ Reminder D1 是提醒业务事实源；身份、Provider 绑定和共享 Session
 `fl-user-auth` 的独立 Auth D1 持有。两个数据库不做跨库事务，通过不透明
 session token 的在线校验形成明确边界：
 
-| 表 | 核心字段 | 关键约束/索引 |
-|---|---|---|
-| `verification_tokens` | identity_id, purpose, token_hash, expires_at, consumed_at | UNIQUE token_hash |
-| `reminders` | owner, recipient, kind, status, version, encrypted content, schedule_json, next_fire_at | owner/status、status/next_fire |
-| `occurrences` | reminder_id, version, logical_at, offset, status | UNIQUE reminder/logical_at/offset |
-| `deliveries` | occurrence_id, attempt, status, provider_message_id | UNIQUE occurrence/attempt、message_id |
-| `acknowledgements` | occurrence_id, action, action_at, snooze_until | occurrence/action_at |
-| `schedule_outbox` | aggregate_id, version, action, status, available_at | UNIQUE aggregate/version/action |
-| `idempotency_keys` | actor, key, request_hash, response | PK actor/key |
-| `email_events` | event_id, provider_message_id, type, occurred_at | PK event_id |
-| `email_suppressions` | email_hash, reason, created_at | PK email_hash |
-| `push_subscriptions` | id, endpoint_hash, encrypted subscription, status, updated_at | UNIQUE endpoint_hash、status/updated_at |
+| 表                    | 核心字段                                                                                | 关键约束/索引                           |
+| --------------------- | --------------------------------------------------------------------------------------- | --------------------------------------- |
+| `verification_tokens` | identity_id, purpose, token_hash, expires_at, consumed_at                               | UNIQUE token_hash                       |
+| `reminders`           | owner, recipient, kind, status, version, encrypted content, schedule_json, next_fire_at | owner/status、status/next_fire          |
+| `occurrences`         | reminder_id, version, logical_at, offset, status                                        | UNIQUE reminder/logical_at/offset       |
+| `deliveries`          | occurrence_id, attempt, status, provider_message_id                                     | UNIQUE occurrence/attempt、message_id   |
+| `acknowledgements`    | occurrence_id, action, action_at, snooze_until                                          | occurrence/action_at                    |
+| `schedule_outbox`     | aggregate_id, version, action, status, available_at                                     | UNIQUE aggregate/version/action         |
+| `idempotency_keys`    | actor, key, request_hash, response                                                      | PK actor/key                            |
+| `email_events`        | event_id, provider_message_id, type, occurred_at                                        | PK event_id                             |
+| `email_suppressions`  | email_hash, reason, created_at                                                          | PK email_hash                           |
+| `push_subscriptions`  | id, endpoint_hash, encrypted subscription, status, updated_at                           | UNIQUE endpoint_hash、status/updated_at |
 
 需要原子提交的操作使用 D1 `batch()`：
 
@@ -579,17 +574,17 @@ sequenceDiagram
 
 ### 9.4 失败与恢复
 
-| 故障 | 行为 |
-|---|---|
-| Workflow 创建失败 | outbox 保持 pending，Cron 重试 |
-| Workflow 醒来重复 | Occurrence 唯一约束去重 |
-| Queue send 成功但 outbox 更新失败 | 可能再次入队，consumer 条件 claim 去重 |
-| Email 明确 429/未接受 5xx | 指数退避重试，耗尽进入 DLQ |
-| Email 结果不确定 | 标记 unknown，先等待 Email Event，15 分钟后一次受控重试 |
-| hard bounce | suppression，并暂停该邮箱提醒 |
-| complaint | 立即 suppression 和全局停止 |
-| D1 不可用 | 写请求 503；不接受无法持久化的提醒 |
-| Analytics 不可用 | 丢弃分析事件，不影响提醒 |
+| 故障                              | 行为                                                    |
+| --------------------------------- | ------------------------------------------------------- |
+| Workflow 创建失败                 | outbox 保持 pending，Cron 重试                          |
+| Workflow 醒来重复                 | Occurrence 唯一约束去重                                 |
+| Queue send 成功但 outbox 更新失败 | 可能再次入队，consumer 条件 claim 去重                  |
+| Email 明确 429/未接受 5xx         | 指数退避重试，耗尽进入 DLQ                              |
+| Email 结果不确定                  | 标记 unknown，先等待 Email Event，15 分钟后一次受控重试 |
+| hard bounce                       | suppression，并暂停该邮箱提醒                           |
+| complaint                         | 立即 suppression 和全局停止                             |
+| D1 不可用                         | 写请求 503；不接受无法持久化的提醒                      |
+| Analytics 不可用                  | 丢弃分析事件，不影响提醒                                |
 
 严格 exactly-once 无法跨 D1 和邮件副作用保证。系统选择 at-least-once，优先避免漏发，同时通过 occurrence、claim 和 provider event 最大限度抑制重复。
 
@@ -720,11 +715,11 @@ Workers Paid 已确定。Email Sending 当前每月包含 3,000 封，之后每 
 
 ### 13.1 环境
 
-| 环境 | 域名 | 隔离 |
-|---|---|---|
-| local | localhost | 本地 D1、测试 Email adapter |
-| staging | staging.reminders.work | 独立 D1、Queue、Workflow、Turnstile、key |
-| production | reminders.work | 独立生产资源 |
+| 环境       | 域名                   | 隔离                                     |
+| ---------- | ---------------------- | ---------------------------------------- |
+| local      | localhost              | 本地 D1、测试 Email adapter              |
+| staging    | staging.reminders.work | 独立 D1、Queue、Workflow、Turnstile、key |
+| production | reminders.work         | 独立生产资源                             |
 
 ### 13.2 首次上线
 
@@ -837,6 +832,61 @@ reminders/
 验收：Apple Calendar、Google Calendar 和 Outlook 可导入同一个 `.ics`；重复规则、
 DST 语义和非 ASCII 标题不损坏；重复点击生成稳定 UID；下载失败不影响创建主流程。
 
+### Slice 1D：OS Calendar Handoff + On-device Understanding
+
+#### 架构驱动与边界
+
+- 浏览器网站没有跨平台直接写入系统日历的标准权限接口；不得伪装成“一键已添加”。
+- 支持 `navigator.canShare({ files })` 且接受 `.ics` 的客户端，可在一次明确点击中
+  调用系统分享面板；其余客户端继续走服务器生成的 attachment 下载。
+- Calendar handoff 只改变用户如何接收同一份 `.ics`，不访问 Calendar 数据、
+  不改变 Reminder 状态，也不引入 Google/Microsoft OAuth。
+- Chrome Prompt API 仅是可选的本地语义归一化适配器；Schedule、时区、重复规则和
+  输入错误的最终裁决仍属于确定性领域代码。
+- 用户输入与模型输出不得发送给 Reminders.work 或第三方 AI 服务；不持久化 prompt。
+
+#### 方案比较
+
+| 方案                                | 语义覆盖 |        平台覆盖 |              隐私/成本 | 决策           |
+| ----------------------------------- | -------: | --------------: | ---------------------: | -------------- |
+| 仅规则解析                          |       中 |            全部 |                   最低 | 保留为强制兜底 |
+| Chrome 本地 Prompt API → 确定性校验 |       高 | 合格桌面 Chrome |     设备内、零推理账单 | 采用渐进增强   |
+| Cloud AI → 结构化结果               |       高 |  全部联网客户端 | 内容离开设备、持续成本 | 当前拒绝       |
+| 第三方 Calendar OAuth 同步          |       高 |      服务商限定 |     高授权与一致性成本 | 当前拒绝       |
+
+#### 组件和契约
+
+```text
+Quick Create click
+  → InterpretReminderText use case
+    → optional OnDeviceTextNormalizer port
+      → browser LanguageModel adapter (Gemini Nano)
+    → deterministic parseReminderText
+  → editable preview
+
+Add to calendar click
+  → exportReminderCalendar (same typed CalendarExportData)
+    → OS share sheet when canShare(.ics)
+    → POST /calendar.ics attachment otherwise
+```
+
+`OnDeviceTextNormalizer` 只返回 canonical reminder text，不返回可执行命令，也不产生
+副作用。application use case 对归一化文本再次调用 `parseReminderText`；解析失败时使用
+原始输入调用同一解析器。UI 必须展示 `On-device AI` 或 `Smart rules` 来源，但用户仍在
+Review 页面确认精确时间。
+
+正常路径：模型已可用 → 设备内归一化 → 确定性解析成功 → 预览。
+
+失败路径：API 缺失、`availability=unavailable`、模型下载/推理异常、JSON 无效或归一化
+结果不受支持 → 不阻断交互，立即/最终回退规则解析；规则仍失败时显示现有可操作错误。
+
+安全与性能：输入长度上限 500 字符；结构化输出只接受一个有长度限制的字符串；模型
+会话仅在用户点击后创建；不得自动弹权限、不得把模型输出直接提交到创建接口。首次模型
+下载属于浏览器管理，UI 使用明确 busy 状态且允许后续规则回退。
+
+验收：mock 可用模型时证明 AI 路径及确定性再解析；API 缺失、模型不可用、模型异常和
+无效输出时证明规则兜底；支持文件分享时证明系统 share 被调用，不支持时仍下载 `.ics`。
+
 ### Slice 2：登录、编辑和 Snooze
 
 - Magic Link、Dashboard、编辑、暂停、恢复、延后。
@@ -891,6 +941,8 @@ Email Service 故障 30 分钟：网站继续持久化；Queue 保留；backlog 
 1. **更多浏览器能力**：Web Push 已作为同一 Occurrence 的 Delivery target；未来只评估通知动作和 badge，不新增调度系统。
 2. **Calendar 演进**：`.ics` 导出作为 Schedule 的边界转换器；只有真实需求证明
    OAuth 授权和双向一致性值得其复杂度后，才重新评审 Calendar 同步域。
+3. **本地 AI 演进**：Prompt API 适配器保持可替换；只有浏览器标准稳定且真实输入数据
+   证明规则覆盖不足时才扩大其职责，永不绕过领域校验与 Review。
 
 团队空间、任务看板、通用 API 只有在独立付费需求成立后重新做架构评审，不能从当前设计自然膨胀出来。
 
@@ -906,21 +958,21 @@ Email Service 故障 30 分钟：网站继续持久化；Queue 保留；backlog 
 
 ## 18. 风险与未决项
 
-| 风险/问题 | 当前决策 | 门禁 |
-|---|---|---|
-| Email Sending Public Beta | 直接使用并接受风险 | Slice 1 压测送达率 |
-| 新账户日额度未知 | 提前 onboarding 和申请 | 公测前批准 |
-| 匿名滥用 | 本人验证、Turnstile、三层限流 | Slice 1 安全测试 |
-| until_done 放大成本/投诉 | 最大次数、最小间隔、每日上限 | Slice 3 |
-| 免费额度未定 | 技术同时限制活动数和发送数 | 公测前产品决策 |
-| 迟到提醒策略 | 默认补发并标原定时间 | Slice 4 验证 |
-| 严格数据驻留未知 | 当前不承诺 | 商业合同前复审 |
+| 风险/问题                 | 当前决策                      | 门禁               |
+| ------------------------- | ----------------------------- | ------------------ |
+| Email Sending Public Beta | 直接使用并接受风险            | Slice 1 压测送达率 |
+| 新账户日额度未知          | 提前 onboarding 和申请        | 公测前批准         |
+| 匿名滥用                  | 本人验证、Turnstile、三层限流 | Slice 1 安全测试   |
+| until_done 放大成本/投诉  | 最大次数、最小间隔、每日上限  | Slice 3            |
+| 免费额度未定              | 技术同时限制活动数和发送数    | 公测前产品决策     |
+| 迟到提醒策略              | 默认补发并标原定时间          | Slice 4 验证       |
+| 严格数据驻留未知          | 当前不承诺                    | 商业合同前复审     |
 
 ## 19. ADR
 
 ### 决策
 
-采用“提醒闭环产品 + Cloudflare 原生模块化单体”：建设 Online、Email、Browser、Recurring、Meeting、Deadline、Follow-up/Until Done 强相关能力；D1 为唯一事实源，Workflow 调度，Queue 投递，Email Service 与标准 Web Push 作为可组合 Delivery targets，Cron 对账。Calendar 只通过无状态 `.ics` 导出读取已验证的 Schedule，不进入 DeliveryPlan 或持久化模型。
+采用“提醒闭环产品 + Cloudflare 原生模块化单体”：建设 Online、Email、Browser、Recurring、Meeting、Deadline、Follow-up/Until Done 强相关能力；D1 为唯一事实源，Workflow 调度，Queue 投递，Email Service 与标准 Web Push 作为可组合 Delivery targets，Cron 对账。Calendar 只通过无状态 `.ics` 导出读取已验证的 Schedule，不进入 DeliveryPlan 或持久化模型。Quick Create 可用 Chrome 设备内 Prompt API 做语义归一化，但确定性解析器和 Review 始终是最终门禁。
 
 ### 原因
 
@@ -937,6 +989,8 @@ Email Service 故障 30 分钟：网站继续持久化；Queue 保留；backlog 
 - Durable Object 时间桶：当前复杂度无回报。
 - 微服务：没有独立团队或扩缩容依据。
 - 外部邮件服务：不符合已确认的全 Cloudflare 约束。
+- 直接写系统日历：网页无跨平台标准接口，改用 feature-detected OS share + `.ics`。
+- 云端 LLM 解析：当前输入可由设备内增强和规则兜底覆盖，不值得增加隐私与运行成本。
 
 ### 后果
 

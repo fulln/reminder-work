@@ -1,4 +1,4 @@
-import type { CalendarExportInput } from "../contracts/calendar-export";
+import type { CalendarExportData } from "../contracts/calendar-export";
 import type { RecurrenceRule } from "../../domain/reminder/schedule";
 
 const encoder = new TextEncoder();
@@ -58,7 +58,7 @@ function recurrenceRule(recurrence: RecurrenceRule): string {
   return `FREQ=MONTHLY;${interval};BYMONTHDAY=${byMonthDay}`;
 }
 
-function stableUid(input: CalendarExportInput): string {
+function stableUid(input: CalendarExportData): string {
   const source = JSON.stringify({
     title: input.title,
     anchorLocal: input.schedule.anchorLocal,
@@ -74,7 +74,7 @@ function stableUid(input: CalendarExportInput): string {
 }
 
 export function exportReminderCalendar(
-  input: CalendarExportInput,
+  input: CalendarExportData,
   options: { readonly now: Date; readonly origin: string },
 ): string {
   const description =

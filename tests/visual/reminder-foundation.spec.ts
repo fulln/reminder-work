@@ -73,3 +73,54 @@ test("captures accessible focus, reduced motion, pending, error, and success sta
     fullPage: true,
   });
 });
+
+test("captures on-device understanding and system calendar handoff", async ({
+  page,
+}, testInfo) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(globalThis, "LanguageModel", {
+      configurable: true,
+      value: {
+        availability: () => Promise.resolve("available"),
+        create: () =>
+          Promise.resolve({
+            prompt: () =>
+              Promise.resolve(
+                JSON.stringify({
+                  normalizedText: "Call Jordan on 2030-08-20 at 09:00",
+                }),
+              ),
+          }),
+      },
+    });
+    Object.defineProperty(navigator, "canShare", {
+      configurable: true,
+      value: () => true,
+    });
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: () => Promise.resolve(),
+    });
+  });
+
+  await page.goto("/");
+  await page
+    .getByRole("textbox", { name: "What should we remind you about?" })
+    .fill("Please untangle this reminder for Jordan");
+  await page.getByRole("button", { name: "Set date & time" }).click();
+  await expect(page.getByText(/Understood · On-device AI/)).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("quick-ai.png"),
+    fullPage: true,
+  });
+
+  await page.getByLabel("Email address").fill("owner@example.com");
+  await page.getByRole("button", { name: "Review reminder" }).click();
+  await expect(
+    page.getByRole("button", { name: "Share to calendar app" }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("calendar-share.png"),
+    fullPage: true,
+  });
+});

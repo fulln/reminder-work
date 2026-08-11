@@ -9,7 +9,7 @@
 **Input**: User description: "Establish the frontend UI style, web experience,
 frontend architecture standards, and code-guarding requirements for Reminders.work."
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Create a reminder with confidence (Priority: P1)
 
@@ -46,6 +46,15 @@ state in under 60 seconds using pointer, keyboard, or supported assistive techno
 8. **Given** a reviewed or created reminder, **When** the visitor chooses Add to calendar,
    **Then** the browser downloads an importable `.ics` file without changing reminder
    activation, verification, or delivery state.
+9. **Given** the operating system and browser accept sharing `.ics` files, **When** the
+   visitor chooses Add to calendar, **Then** the native share surface opens; otherwise the
+   same control falls back to downloading the file.
+10. **Given** a compatible desktop Chrome with its local language model available, **When**
+    the visitor uses Quick Create, **Then** the input is normalized on-device and passed
+    through deterministic reminder validation before preview.
+11. **Given** local AI is missing, unavailable, downloading unsuccessfully, or returns an
+    invalid result, **When** the visitor uses Quick Create, **Then** deterministic parsing
+    remains available without sending the reminder text to a cloud AI service.
 
 ---
 
@@ -142,7 +151,7 @@ contract versioning are rejected with actionable messages.
   installing the site as a Home Screen web app.
 - A Push endpoint is malformed, transiently unavailable, or permanently returns 404/410.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -228,6 +237,16 @@ contract versioning are rejected with actionable messages.
   recurrence semantics, text escaping, stable UID, and at least one display alarm.
 - **FR-038**: Calendar export failure MUST NOT block or mutate reminder review, creation,
   verification, scheduling, or delivery.
+- **FR-039**: Calendar handoff MUST use capability detection before invoking an operating
+  system share surface and MUST retain `.ics` download as the universal fallback.
+- **FR-040**: Quick Create MAY use a browser-managed on-device language model only as a
+  semantic normalization adapter; every result MUST pass the deterministic reminder
+  parser and the existing Review step before creation.
+- **FR-041**: Missing APIs, unsupported devices or languages, model download or inference
+  failure, malformed output, and unsupported normalized expressions MUST fall back to
+  deterministic parsing without calling cloud AI.
+- **FR-042**: Reminder input, prompts, and model output MUST remain on the device and MUST
+  NOT be persisted or included in routine telemetry.
 
 ### Key Entities
 
@@ -243,7 +262,7 @@ contract versioning are rejected with actionable messages.
 - **Quality Gate**: A reproducible acceptance rule that blocks a non-conforming change.
 - **Governed Exception**: A temporary, owned deviation from a mandatory boundary or rule.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
@@ -274,12 +293,16 @@ contract versioning are rejected with actionable messages.
 - **SC-013**: Automated tests prove exported one-time, daily, weekly, and monthly files
   are parseable, contain no unescaped user-controlled lines, and retain local time-zone
   semantics at 320 px and desktop layouts.
+- **SC-014**: Automated browser tests prove both OS calendar handoff and attachment
+  fallback, plus local-AI success, unavailable, invalid-output, and failure fallback.
 
 ## Assumptions
 
 - English is the canonical public language and Chinese is the first translated language.
-- Email and browser notification are the launch delivery channels; Calendar export is a
-  separate user-initiated interoperability action.
+- Email and browser notification are the launch delivery channels; Calendar export and
+  feature-detected OS handoff are separate user-initiated interoperability actions.
+- Chrome built-in AI is optional desktop-only progressive enhancement; deterministic
+  parsing remains the cross-browser and mobile baseline.
 - Anonymous visitors may create reminders only for an email address they verify.
 - The visual signature is a time rail connecting schedule, due point, and acknowledgement.
 - The first implementation covers responsive web; native apps and browser extensions are

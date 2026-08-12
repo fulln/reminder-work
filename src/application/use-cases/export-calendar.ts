@@ -1,5 +1,6 @@
 import type { CalendarExportData } from "../contracts/calendar-export";
 import type { RecurrenceRule } from "../../domain/reminder/schedule";
+import type { ReminderSchedule } from "../../domain/reminder/schedule";
 
 const encoder = new TextEncoder();
 const weekdayCodes = ["", "MO", "TU", "WE", "TH", "FR", "SA", "SU"];
@@ -58,44 +59,48 @@ function recurrenceRule(recurrence: RecurrenceRule): string {
   return `FREQ=MONTHLY;${interval};BYMONTHDAY=${byMonthDay}`;
 }
 
-function stableUid(input: CalendarExportData): string {
-  const source = JSON.stringify({
-    title: input.title,
-    anchorLocal: input.schedule.anchorLocal,
-    timeZone: input.schedule.timeZone,
-    recurrence: input.schedule.recurrence,
-  });
+function stableUid(source: unknown): string {
+  const serialized = JSON.stringify(source);
   let hash = 0xcbf29ce484222325n;
-  for (const byte of encoder.encode(source)) {
+  for (const byte of encoder.encode(serialized)) {
     hash ^= BigInt(byte);
     hash = BigInt.asUintN(64, hash * 0x100000001b3n);
   }
   return `${hash.toString(16).padStart(16, "0")}@reminders.work`;
 }
 
-export function exportReminderCalendar(
-  input: CalendarExportData,
-  options: { readonly now: Date; readonly origin: string },
-): string {
-  const description =
-    input.managePath === undefined
-      ? "Created with Reminders.work"
-      : `Created with Reminders.work\nManage: ${options.origin}${input.managePath}`;
-  const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
-    "PRODID:-//Reminders.work//Reminder Calendar Export//EN",
-    "X-WR-CALNAME:Reminders.work",
-    `X-WR-TIMEZONE:${input.schedule.timeZone}`,
+interface CalendarEventInput {
+  readonly uid: string;
+  readonly title: string;
+  readonly schedule: ReminderSchedule;
+  readonly description: string;
+  readonly sequence?: number;
+  readonly updatedAt?: string;
+}
+
+export interface CalendarFeedEntry {
+  readonly id: string;
+  readonly version: number;
+  readonly title: string;
+  readonly schedule: ReminderSchedule;
+  readonly updatedAt: string;
+}
+
+function eventLines(input: CalendarEventInput, now: Date): readonly string[] {
+  return [
     "BEGIN:VEVENT",
-    `UID:${stableUid(input)}`,
-    `DTSTAMP:${utcDateTime(options.now)}`,
+    `UID:${input.uid}`,
+    `DTSTAMP:${utcDateTime(now)}`,
+    ...(input.updatedAt === undefined
+      ? []
+      : [`LAST-MODIFIED:${utcDateTime(new Date(input.updatedAt))}`]),
+    ...(input.sequence === undefined
+      ? []
+      : [`SEQUENCE:${String(input.sequence)}`]),
     `DTSTART;TZID=${input.schedule.timeZone}:${calendarDateTime(input.schedule.anchorLocal)}`,
     "DURATION:PT15M",
     `SUMMARY:${escapeText(input.title)}`,
-    `DESCRIPTION:${escapeText(description)}`,
+    `DESCRIPTION:${escapeText(input.description)}`,
     "STATUS:CONFIRMED",
     "TRANSP:TRANSPARENT",
     ...(input.schedule.recurrence === null
@@ -114,7 +119,67 @@ export function exportReminderCalendar(
       "END:VALARM",
     ]),
     "END:VEVENT",
+  ];
+}
+
+function calendarDocument(
+  events: readonly CalendarEventInput[],
+  options: { readonly now: Date; readonly name: string },
+): string {
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "PRODID:-//Reminders.work//Reminder Calendar Export//EN",
+    `X-WR-CALNAME:${escapeText(options.name)}`,
+    "REFRESH-INTERVAL;VALUE=DURATION:PT15M",
+    "X-PUBLISHED-TTL:PT15M",
+    ...events.flatMap((event) => eventLines(event, options.now)),
     "END:VCALENDAR",
   ];
   return `${lines.map(foldLine).join("\r\n")}\r\n`;
+}
+
+export function exportReminderCalendar(
+  input: CalendarExportData,
+  options: { readonly now: Date; readonly origin: string },
+): string {
+  const description =
+    input.managePath === undefined
+      ? "Created with Reminders.work"
+      : `Created with Reminders.work\nManage: ${options.origin}${input.managePath}`;
+  return calendarDocument(
+    [
+      {
+        uid: stableUid({
+          title: input.title,
+          anchorLocal: input.schedule.anchorLocal,
+          timeZone: input.schedule.timeZone,
+          recurrence: input.schedule.recurrence,
+        }),
+        title: input.title,
+        schedule: input.schedule,
+        description,
+      },
+    ],
+    { now: options.now, name: "Reminders.work" },
+  );
+}
+
+export function exportReminderCalendarFeed(
+  entries: readonly CalendarFeedEntry[],
+  options: { readonly now: Date },
+): string {
+  return calendarDocument(
+    entries.map((entry) => ({
+      uid: stableUid({ reminderId: entry.id }),
+      title: entry.title,
+      schedule: entry.schedule,
+      description: "Synced from Reminders.work",
+      sequence: entry.version,
+      updatedAt: entry.updatedAt,
+    })),
+    { now: options.now, name: "Reminders.work — My reminders" },
+  );
 }

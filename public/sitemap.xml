@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://reminders.work/</loc></url>
+  <url><loc>https://reminders.work/about</loc></url>
+  <url><loc>https://reminders.work/privacy</loc></url>
+  <url><loc>https://reminders.work/contact</loc></url>
   <url><loc>https://reminders.work/online-reminder</loc></url>
   <url><loc>https://reminders.work/zh/online-reminder</loc></url>
   <url><loc>https://reminders.work/email-reminder</loc></url>

@@ -56,3 +56,24 @@ test("recurring and deadline pages expose their real controls", async ({
     page.getByText("Reminder lead times", { exact: true }),
   ).toBeVisible();
 });
+
+test("AdSense loads only on public capability pages", async ({
+  page,
+  request,
+}) => {
+  const homepage = await (await request.get("/")).text();
+  const privacy = await (await request.get("/privacy")).text();
+
+  await page.route("https://pagead2.googlesyndication.com/**", (route) =>
+    route.abort(),
+  );
+  await page.goto("/online-reminder");
+  await expect(page.locator("#reminders-work-adsense")).toHaveAttribute(
+    "src",
+    /client=ca-pub-3211121736772217/,
+  );
+  expect(homepage).toContain("google-adsense-account");
+  expect(homepage).not.toContain('id="reminders-work-adsense"');
+  expect(privacy).toContain("Your reminders are not advertising data.");
+  expect(privacy).not.toContain('id="reminders-work-adsense"');
+});

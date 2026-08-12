@@ -1,8 +1,8 @@
 import { findCapabilityPreset } from "../../content/capability-presets";
 import type { CapabilityLocale } from "../../content/capability-presets";
 import { CapabilityPage } from "../features/capability-page/CapabilityPage";
+import { handleComposerAction } from "../features/reminder-composer/composer-action.server";
 import { applicationServicesContext } from "../server-context";
-import { handleComposerAction } from "./home";
 import type { Route } from "./+types/capabilities";
 
 export function loader({ params, request }: Route.LoaderArgs) {

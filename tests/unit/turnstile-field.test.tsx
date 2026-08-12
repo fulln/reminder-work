@@ -42,7 +42,7 @@ describe("TurnstileField", () => {
       value: { render: renderWidget, reset, remove },
     });
 
-    const { container, unmount } = render(
+    const { container, rerender, unmount } = render(
       <TurnstileField siteKey="production-site-key" useLocalBypass={false} />,
     );
     await waitFor(() => {
@@ -65,6 +65,36 @@ describe("TurnstileField", () => {
       container.querySelector<HTMLInputElement>('input[name="turnstileToken"]'),
     ).toHaveValue("");
     expect(reset).toHaveBeenCalledWith("widget-1");
+
+    act(() => {
+      options?.callback("server-rejected-token");
+    });
+    rerender(
+      <TurnstileField
+        siteKey="production-site-key"
+        useLocalBypass={false}
+        fieldError={["Complete the security check again."]}
+      />,
+    );
+    await waitFor(() => {
+      expect(reset).toHaveBeenCalledTimes(2);
+    });
+    expect(
+      container.querySelector<HTMLInputElement>('input[name="turnstileToken"]'),
+    ).toHaveValue("");
+    expect(container.textContent).toContain(
+      "Complete the security check again.",
+    );
+
+    act(() => {
+      options?.callback("fresh-browser-token");
+    });
+    expect(
+      container.querySelector<HTMLInputElement>('input[name="turnstileToken"]'),
+    ).toHaveValue("fresh-browser-token");
+    expect(container.textContent).not.toContain(
+      "Complete the security check again.",
+    );
 
     unmount();
     expect(remove).toHaveBeenCalledWith("widget-1");

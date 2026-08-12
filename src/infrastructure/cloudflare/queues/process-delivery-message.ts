@@ -1,11 +1,19 @@
 import type { ContentProtector } from "../../../application/ports/content-protector";
+import type { ReminderEmailPort } from "../../../application/ports/email-delivery";
 import type { ReminderRepository } from "../../../application/ports/reminder-repository";
 import type { SuppressionRepository } from "../../../application/ports/suppression-repository";
 import type { TokenPort } from "../../../application/ports/token";
 import type { DeliveryClaimRepository } from "../d1/delivery-claim-repository";
-import type { ReminderEmailPort } from "../email/email-service-adapter";
 import type { PushSubscriptionRepository } from "../../../application/ports/push-subscription-repository";
 import type { WebPushDeliveryPort } from "../../../application/ports/web-push-delivery";
+import type { DeliveryDestinationRepository } from "../../../application/ports/delivery-destination-repository";
+import type { DeliveryAttemptRepository } from "../../../application/ports/delivery-attempt-repository";
+import {
+  ExternalDeliveryError,
+  type ExternalDeliveryEvent,
+  type SlackDeliveryPort,
+  type WebhookDeliveryPort,
+} from "../../../application/ports/external-delivery";
 import type { SafeLogger } from "../observability/redacted-logger";
 import { deliveryDecision } from "./delivery-safety";
 import { reminderDeliveryMessageSchema } from "./delivery-message";
@@ -25,6 +33,10 @@ export interface ProcessDeliveryDependencies {
   readonly email: ReminderEmailPort;
   readonly pushSubscriptions: PushSubscriptionRepository;
   readonly webPush: WebPushDeliveryPort;
+  readonly destinations?: DeliveryDestinationRepository;
+  readonly attempts?: DeliveryAttemptRepository;
+  readonly slackDelivery?: SlackDeliveryPort;
+  readonly webhookDelivery?: WebhookDeliveryPort;
   readonly logger: SafeLogger;
   readonly origin: string;
   now(): Date;
@@ -183,6 +195,119 @@ export async function processDeliveryMessage(
         await sendEmail();
       }
     }
+    let externalRetryRequired = false;
+    const destinationTargets = reminder.deliveryPlan.targets.filter(
+      (target) => target.channel === "destination",
+    );
+    if (
+      destinationTargets.length > 0 &&
+      (dependencies.destinations === undefined ||
+        dependencies.attempts === undefined ||
+        dependencies.slackDelivery === undefined ||
+        dependencies.webhookDelivery === undefined)
+    ) {
+      throw new Error("EXTERNAL_DELIVERY_NOT_CONFIGURED");
+    }
+    const destinations = dependencies.destinations;
+    const attempts = dependencies.attempts;
+    const slackDelivery = dependencies.slackDelivery;
+    const webhookDelivery = dependencies.webhookDelivery;
+    for (const target of destinationTargets) {
+      const attemptKey = `${message.idempotencyKey}:destination:${target.destinationId}`;
+      if (
+        destinations === undefined ||
+        attempts === undefined ||
+        slackDelivery === undefined ||
+        webhookDelivery === undefined
+      ) {
+        throw new Error("EXTERNAL_DELIVERY_NOT_CONFIGURED");
+      }
+      const destination = await destinations.findById(target.destinationId);
+      if (
+        destination === null ||
+        destination.ownerUserId !== reminder.ownerUserId ||
+        destination.status === "disabled"
+      ) {
+        await attempts.record({
+          idempotencyKey: attemptKey,
+          reminderId: reminder.id,
+          destinationId: target.destinationId,
+          eventType: "reminder.due",
+          status: "skipped",
+          failureCode: "DESTINATION_UNAVAILABLE",
+          occurredAt: dependencies.now().toISOString(),
+        });
+        continue;
+      }
+      const claimed = await dependencies.claims.claim(
+        attemptKey,
+        reminder.id,
+        dependencies.now().toISOString(),
+      );
+      if (!claimed) continue;
+      const occurredAt = dependencies.now().toISOString();
+      const event: ExternalDeliveryEvent = {
+        schemaVersion: 1,
+        event: "reminder.due",
+        idempotencyKey: attemptKey,
+        occurredAt,
+        reminder: {
+          title: content.title,
+          dueAt: reminder.schedule.resolvedUtc,
+          manageUrl,
+        },
+      };
+      try {
+        await attempts.record({
+          idempotencyKey: attemptKey,
+          reminderId: reminder.id,
+          destinationId: destination.id,
+          eventType: "reminder.due",
+          status: "processing",
+          occurredAt,
+        });
+        if (destination.credential.kind === "slack") {
+          await slackDelivery.send(destination.credential, event);
+        } else {
+          await webhookDelivery.send(destination.credential, event);
+        }
+        await Promise.all([
+          dependencies.claims.markSent(attemptKey, occurredAt),
+          destinations.markSucceeded(destination.id, occurredAt),
+          attempts.record({
+            idempotencyKey: attemptKey,
+            reminderId: reminder.id,
+            destinationId: destination.id,
+            eventType: "reminder.due",
+            status: "sent",
+            occurredAt,
+          }),
+        ]);
+      } catch (error) {
+        const externalError =
+          error instanceof ExternalDeliveryError
+            ? error
+            : new ExternalDeliveryError("EXTERNAL_DELIVERY_FAILED", true);
+        await Promise.all([
+          externalError.retryable
+            ? dependencies.claims.markFailed(attemptKey, occurredAt)
+            : dependencies.claims.markSent(attemptKey, occurredAt),
+          destinations.markFailed(destination.id, occurredAt),
+          attempts.record({
+            idempotencyKey: attemptKey,
+            reminderId: reminder.id,
+            destinationId: destination.id,
+            eventType: "reminder.due",
+            status: "failed",
+            failureCode: externalError.code,
+            occurredAt,
+          }),
+        ]);
+        externalRetryRequired ||= externalError.retryable;
+      }
+    }
+    if (externalRetryRequired)
+      throw new Error("EXTERNAL_DELIVERY_RETRY_REQUIRED");
     dependencies.logger.info({
       operation: "delivery",
       outcome: "sent",

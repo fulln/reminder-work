@@ -15,7 +15,9 @@ async function revealScheduleDetails(page: Page) {
   }).toPass();
 }
 
-test("reviews exact time then reaches email verification", async ({ page }) => {
+test("reviews exact time then activates the reminder directly", async ({
+  page,
+}) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Set it once",
@@ -42,7 +44,9 @@ test("reviews exact time then reaches email verification", async ({ page }) => {
   await expect(page.getByText("04 · Security", { exact: true })).toBeVisible();
   await expect(page.getByText("Security check complete.")).toBeVisible();
   const calendarDownload = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Add to calendar" }).click();
+  await page
+    .getByRole("button", { name: "Download one-time calendar event" })
+    .click();
   const calendar = await calendarDownload;
   expect(calendar.suggestedFilename()).toBe("reminder.ics");
   const calendarPath = await calendar.path();
@@ -51,18 +55,15 @@ test("reviews exact time then reaches email verification", async ({ page }) => {
   );
   await page.getByRole("button", { name: "Create reminder" }).click();
   await expect(
-    page.getByRole("heading", { name: "Check your email" }),
+    page.getByRole("heading", { name: "Your reminder is active" }),
+  ).toBeVisible();
+  await expect(page.getByText(/unsubscribe controls/i)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Download one-time calendar event" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Add to calendar" }),
-  ).toBeVisible();
-  await page
-    .getByRole("link", { name: "Open local verification preview" })
-    .click();
-  await page.getByRole("button", { name: "Verify email" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Reminder activated" }),
-  ).toBeVisible();
+    page.getByRole("link", { name: "Manage reminder" }),
+  ).toHaveAttribute("href", /\/manage\//u);
 });
 
 test("moves focus to actionable validation feedback", async ({ page }) => {
@@ -182,7 +183,7 @@ test("hands an iCalendar file to the operating system when supported", async ({
   ).toBeVisible();
   await page.getByRole("button", { name: "Review reminder" }).click();
 
-  await page.getByRole("button", { name: "Share to calendar app" }).click();
+  await page.getByRole("button", { name: "Add this reminder once" }).click();
   await expect
     .poll(() =>
       page.evaluate(
@@ -313,7 +314,9 @@ test("enables this browser explicitly and creates a push-only reminder", async (
     page.getByRole("link", { name: "Manage reminder" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Add to calendar" }),
+    page.getByRole("button", {
+      name: "Download one-time calendar event",
+    }),
   ).toBeVisible();
 });
 
@@ -423,4 +426,8 @@ test("keeps public purpose and labels in server HTML", async ({ request }) => {
   expect(html).toContain("Free online reminders");
   expect(html).toContain("What should we remind you about?");
   expect(html).toContain("Choose date &amp; time manually");
+  expect(html).toContain("Remember the work. Control the delivery.");
+  expect(html).toContain("View reminder management");
+  expect(html).toContain("View email &amp; delivery");
+  expect(html).toContain("Recipient control by design");
 });

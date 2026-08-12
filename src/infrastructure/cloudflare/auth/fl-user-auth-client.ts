@@ -48,7 +48,7 @@ export class FlUserAuthClient implements AuthServicePort {
   }) {
     this.#baseUrl = input.baseUrl.replace(/\/$/, "");
     this.#relyingWebsiteId = input.relyingWebsiteId;
-    this.#fetch = input.fetcher ?? fetch;
+    this.#fetch = input.fetcher ?? ((request, init) => fetch(request, init));
   }
 
   async startOAuth(

@@ -117,7 +117,7 @@ test("captures on-device understanding and system calendar handoff", async ({
   await page.getByLabel("Email address").fill("owner@example.com");
   await page.getByRole("button", { name: "Review reminder" }).click();
   await expect(
-    page.getByRole("button", { name: "Share to calendar app" }),
+    page.getByRole("button", { name: "Add this reminder once" }),
   ).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("calendar-share.png"),

@@ -20,15 +20,6 @@ import { TurnstileField } from "./TurnstileField";
 import { WebPushField } from "./WebPushField";
 import { createChromeReminderNormalizer } from "../../browser/chrome-reminder-normalizer";
 
-type PendingCreatedResult = Omit<
-  Extract<CreateReminderAccepted, { readonly state: "pending_verification" }>,
-  "verificationToken"
-> & { readonly verificationToken?: string };
-
-type ComposerCreatedResult =
-  | PendingCreatedResult
-  | Extract<CreateReminderAccepted, { readonly state: "active" }>;
-
 export type ComposerActionData =
   | {
       readonly stage: "input-error";
@@ -48,7 +39,10 @@ export type ComposerActionData =
     }
   | {
       readonly stage: "created";
-      readonly result: ComposerCreatedResult;
+      readonly result: Extract<
+        CreateReminderAccepted,
+        { readonly state: "active" }
+      >;
       readonly calendar?: CalendarExportData;
     };
 
@@ -193,6 +187,14 @@ function HiddenDraft({ reminder }: { readonly reminder: ReviewedReminder }) {
           value={JSON.stringify(reminder.pushSubscription)}
         />
       )}
+      {reminder.destinationIds.map((destinationId) => (
+        <input
+          key={destinationId}
+          type="hidden"
+          name="destinationIds"
+          value={destinationId}
+        />
+      ))}
       <input type="hidden" name="localDate" value={reminder.localDate} />
       <input type="hidden" name="localTime" value={reminder.localTime} />
       <input type="hidden" name="timeZone" value={reminder.timeZone} />
@@ -293,13 +295,13 @@ function CalendarExportForm({
         {sharingCalendar
           ? "Opening calendar…"
           : systemShareAvailable
-            ? "Share to calendar app"
-            : "Add to calendar"}
+            ? "Add this reminder once"
+            : "Download one-time calendar event"}
       </button>
       <small>
         {systemShareAvailable
-          ? "Uses your system share sheet"
-          : "Apple Calendar · Google Calendar · Outlook"}
+          ? "Uses your system share sheet · recipient email reminders send directly when due"
+          : "For Apple Calendar · Google Calendar · Outlook · recipient email reminders send directly when due"}
       </small>
     </form>
   );
@@ -341,6 +343,18 @@ export function ReminderComposer({
   const [browserSelected, setBrowserSelected] = useState(
     initialDeliveryMode !== "email",
   );
+  const initialDestinationIds = (() => {
+    const value = fieldValue(actionData, "destinationIds");
+    if (value === "") return [];
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return Array.isArray(parsed)
+        ? parsed.filter((item): item is string => typeof item === "string")
+        : [];
+    } catch {
+      return [];
+    }
+  })();
   const deliveryMode: DeliveryMode = emailSelected
     ? browserSelected
       ? "web_push_email_fallback"
@@ -434,49 +448,39 @@ export function ReminderComposer({
   }
 
   if (actionData?.stage === "created") {
-    if (actionData.result.state === "active") {
-      return (
-        <section className={styles.result} aria-labelledby="active-title">
-          <p className={styles.step}>Reminder active · Browser delivery</p>
-          <h2 id="active-title">This browser will remind you</h2>
-          <p>
-            The reminder is scheduled. A system notification will open its
-            secure management page when it is due.
-          </p>
-          <a
-            className={styles.previewLink}
-            href={`/manage/${actionData.result.manageToken}`}
-          >
-            Manage reminder
-          </a>
-          {actionData.calendar === undefined ? null : (
-            <CalendarExportForm calendar={actionData.calendar} />
-          )}
-        </section>
-      );
-    }
+    const emailDelivery = actionData.result.channels.includes("email");
+    const browserDelivery = actionData.result.channels.includes("web_push");
     return (
-      <section className={styles.result} aria-labelledby="verification-title">
-        <p className={styles.step}>Reminder saved · Verification required</p>
-        <h2 id="verification-title">Check your email</h2>
-        <p>
-          We prepared a verification message for{" "}
-          <strong>{actionData.result.maskedRecipient}</strong>. The reminder
-          will not become active until the address is verified.
+      <section className={styles.result} aria-labelledby="active-title">
+        <p className={styles.step}>
+          Reminder active · {emailDelivery ? "Email" : "Browser"}
+          {emailDelivery && browserDelivery ? " + browser" : ""} delivery
+          {(actionData.result.destinationCount ?? 0) > 0
+            ? ` + ${String(actionData.result.destinationCount)} saved destination${actionData.result.destinationCount === 1 ? "" : "s"}`
+            : ""}
         </p>
-        {actionData.result.verificationToken === undefined ? null : (
-          <>
-            <a
-              className={styles.previewLink}
-              href={`/verify/${actionData.result.verificationToken}`}
-            >
-              Open local verification preview
-            </a>
-            <p className={styles.localNote}>
-              This preview link is shown only by the local development flow.
-            </p>
-          </>
-        )}
+        <h2 id="active-title">
+          {emailDelivery
+            ? "Your reminder is active"
+            : "This browser will remind you"}
+        </h2>
+        <p>
+          {emailDelivery
+            ? "We’ll send the reminder when it is due. Every email includes unsubscribe controls for the recipient."
+            : "A system notification will open its secure management page when it is due."}
+        </p>
+        {browserDelivery && emailDelivery ? (
+          <p>
+            If browser notifications fail, the email reminder still sends at the
+            scheduled time.
+          </p>
+        ) : null}
+        <a
+          className={styles.previewLink}
+          href={`/manage/${actionData.result.manageToken}`}
+        >
+          Manage reminder
+        </a>
         {actionData.calendar === undefined ? null : (
           <CalendarExportForm calendar={actionData.calendar} />
         )}
@@ -516,6 +520,9 @@ export function ReminderComposer({
                 : actionData.reminder.deliveryMode === "web_push"
                   ? "Browser notification"
                   : "Browser notification · Email backup"}
+              {actionData.reminder.destinationIds.length > 0
+                ? ` · ${String(actionData.reminder.destinationIds.length)} saved destination${actionData.reminder.destinationIds.length === 1 ? "" : "s"}`
+                : ""}
             </dd>
           </div>
           {actionData.reminder.recurrence === null ||
@@ -792,7 +799,8 @@ export function ReminderComposer({
                     placeholder="you@example.com"
                   />
                   <span id="recipientEmail-hint" className={styles.hint}>
-                    We send nothing until this address is verified.
+                    The reminder sends directly when due. The recipient can stop
+                    all future delivery from the email.
                   </span>
                   <FieldError actionData={actionData} name="recipientEmail" />
                 </div>
@@ -836,7 +844,39 @@ export function ReminderComposer({
                 </div>
               ) : null}
             </div>
+            {rootData?.deliveryDestinations.map((destination) => (
+              <label
+                className={styles.externalDestination}
+                key={destination.id}
+              >
+                <input
+                  type="checkbox"
+                  name="destinationIds"
+                  value={destination.id}
+                  defaultChecked={initialDestinationIds.includes(
+                    destination.id,
+                  )}
+                  disabled={destination.status === "disabled"}
+                />
+                <span>
+                  <strong>{destination.label}</strong>
+                  <small>
+                    {destination.type === "slack" ? "Slack" : "Webhook"} ·{" "}
+                    {destination.detail}
+                    {destination.status === "failing"
+                      ? " · Needs attention"
+                      : ""}
+                  </small>
+                </span>
+              </label>
+            ))}
           </div>
+          {rootData?.user === null ? null : (
+            <a className={styles.manageDestinations} href="/settings/email">
+              Manage Slack and webhook delivery
+            </a>
+          )}
+          <FieldError actionData={actionData} name="destinationIds" />
           <input type="hidden" name="deliveryMode" value={deliveryMode} />
         </fieldset>
       ) : null}

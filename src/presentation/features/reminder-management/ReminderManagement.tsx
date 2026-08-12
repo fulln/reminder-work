@@ -23,6 +23,26 @@ export function ReminderManagement({ view }: { readonly view: ReminderView }) {
         })}{" "}
         · {view.schedule.timeZone}
       </p>
+      {view.deliveryLabel === undefined ? null : (
+        <section className={styles.delivery} aria-labelledby="delivery-title">
+          <div>
+            <h2 id="delivery-title">Delivery</h2>
+            <p>
+              {view.deliveryLabel}
+              {view.maskedRecipient === undefined
+                ? ""
+                : ` · ${view.maskedRecipient}`}
+            </p>
+          </div>
+          <span>
+            {view.status === "pending_verification"
+              ? "Pending"
+              : view.status === "active" || view.status === "snoozed"
+                ? "Ready"
+                : "Inactive"}
+          </span>
+        </section>
+      )}
       {terminal ? (
         <p>No further delivery actions are available for this reminder.</p>
       ) : (

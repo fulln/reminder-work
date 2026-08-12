@@ -30,13 +30,24 @@ export class CloudflareTurnstileAdapter implements TurnstilePort {
     if (!response.ok) return false;
     const result: unknown = await response.json();
     if (typeof result !== "object" || result === null) return false;
-    return (
+    const accepted =
       "success" in result &&
       result.success === true &&
       "hostname" in result &&
       result.hostname === this.expectedHostname &&
       "action" in result &&
-      result.action === "create_reminder"
-    );
+      result.action === "create_reminder";
+    if (!accepted) {
+      console.warn("Turnstile verification rejected", {
+        errorCodes:
+          "error-codes" in result && Array.isArray(result["error-codes"])
+            ? result["error-codes"]
+            : [],
+        hostname: "hostname" in result ? result.hostname : undefined,
+        action: "action" in result ? result.action : undefined,
+        expectedHostname: this.expectedHostname,
+      });
+    }
+    return accepted;
   }
 }

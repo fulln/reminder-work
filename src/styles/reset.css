@@ -71,7 +71,7 @@ a {
   align-items: center;
   display: flex;
   justify-content: space-between;
-  padding-block: var(--space-2) var(--space-5);
+  margin-bottom: var(--space-4);
 }
 
 .site-header p {
@@ -90,6 +90,37 @@ a {
 .wordmark span,
 .eyebrow {
   color: var(--color-signal);
+}
+
+.site-footer {
+  align-items: center;
+  border-top: 0.0625rem solid var(--color-border);
+  color: var(--color-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+  gap: var(--space-1) var(--space-3);
+  justify-content: space-between;
+  margin: var(--space-5) auto 0;
+  max-width: 78rem;
+  padding: var(--space-3);
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.site-footer nav {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.site-footer a {
+  color: inherit;
+}
+
+.site-footer-note {
+  flex-basis: 100%;
 }
 
 .hero {
@@ -258,7 +289,8 @@ button:active {
   }
 
   .site-header {
-    padding-block: var(--space-1) var(--space-3);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-3);
   }
 
   .site-header p {

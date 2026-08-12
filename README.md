@@ -6,8 +6,9 @@ Free online reminders for tasks, meetings, and deadlines.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Reminders.work is a focused, install-free reminder service. It lets people create an
-email reminder from the web, verify the recipient, receive it at the correct local
-time, and manage it through secure links.
+email reminder from the web, receive it at the correct local time, and manage it
+through secure links. Email reminders are activated immediately; recipients retain
+an address-wide opt-out that reminder creators cannot reverse.
 
 ## Capabilities
 
@@ -15,6 +16,10 @@ time, and manage it through secure links.
 - Daily, weekly, and monthly recurrence
 - Meeting, deadline, and follow-up presets
 - Complete, snooze, reschedule, cancel, and unsubscribe flows
+- Direct email scheduling with Turnstile, privacy-preserving rate limits, and
+  recipient-controlled suppression
+- Account-owned Slack channels and signed HTTPS webhooks as optional fan-out
+  destinations
 - IANA time-zone and daylight-saving-time handling
 - English-first SEO pages with Chinese routes under `/zh/*`
 - Keyboard, reduced-motion, mobile, and WCAG-oriented interaction coverage
@@ -28,10 +33,18 @@ The application is a Cloudflare-native modular monolith:
 - D1 as the source of truth
 - Workflows for durable scheduling
 - Queues for delivery retries and idempotency
-- Cloudflare Email Service for reminder delivery
+- Cloudflare Email Service for reminder delivery, with hard-bounce and complaint
+  events synchronized back into D1 recipient suppression
+- Slack Incoming Webhooks installed through OAuth v2 and generic webhooks signed
+  with HMAC-SHA256
 - Turnstile for abuse prevention
 - `fl-user-auth` through a Cloudflare Worker Service Binding for Google and
   GitHub OAuth, site-bound sessions, and logout revocation
+
+Google AdSense is limited to the public capability pages. The reminder composer,
+account, management, verification, unsubscribe, calendar, and trust pages do not
+load the advertising runtime. The publisher declaration lives in `public/ads.txt`;
+consent messaging for regulated regions is configured in the AdSense console.
 
 Domain, application, infrastructure, and presentation boundaries are enforced in CI.
 The detailed design is available in [docs/architecture.md](docs/architecture.md), and
@@ -99,6 +112,18 @@ npx wrangler secret put CONTENT_ENCRYPTION_KEY
 npx wrangler secret put TURNSTILE_SECRET_KEY
 npm run deploy
 ```
+
+Slack delivery is optional. Create a Slack app from
+[`docs/integrations/slack-app-manifest.yml`](docs/integrations/slack-app-manifest.yml),
+then set the app credentials before deploying:
+
+```bash
+npx wrangler secret put SLACK_CLIENT_ID
+npx wrangler secret put SLACK_CLIENT_SECRET
+```
+
+Webhook destinations need no provider credentials. Their URL and signing secret
+are encrypted with `CONTENT_ENCRYPTION_KEY`.
 
 Apply migrations to the production database separately with Wrangler's `--remote`
 flag. Review [the verification notes](specs/001-reminder-web-foundation/verification.md)

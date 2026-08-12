@@ -1,16 +1,24 @@
 import {
+  data,
   isRouteErrorResponse,
   Links,
   Meta,
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
   useRouteLoaderData,
 } from "react-router";
 
 import type { Route } from "./+types/root";
-import { readAuthSessionToken } from "./auth-session.server";
+import {
+  createAuthSessionCookie,
+  readAuthSessionToken,
+} from "./auth-session.server";
 import { applicationServicesContext } from "./server-context";
+import { AdSenseHead } from "./AdSenseHead";
+import { AdSenseLoader } from "./AdSenseLoader";
+import { SiteFooter } from "./ui/SiteFooter";
 import "../styles/fonts.css";
 import "../styles/tokens.css";
 import "../styles/reset.css";
@@ -27,7 +35,13 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     sessionToken === null
       ? null
       : await services.auth.validateSession(sessionToken).catch(() => null);
-  return {
+  const destinationResult =
+    session === null
+      ? null
+      : await services
+          .listDeliveryDestinations(session.user.id)
+          .catch(() => null);
+  const loaderData = {
     lang: new URL(request.url).pathname.startsWith("/zh/")
       ? ("zh-CN" as const)
       : ("en" as const),
@@ -36,17 +50,33 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     turnstileSiteKey: services.turnstileSiteKey,
     vapidPublicKey: services.vapidPublicKey,
     useLocalTurnstileBypass: services.showLocalVerificationPreview,
+    deliveryDestinations:
+      destinationResult?.ok === true ? destinationResult.data.destinations : [],
   };
+  if (sessionToken === null || session === null) return data(loaderData);
+
+  return data(loaderData, {
+    headers: {
+      "Cache-Control": "private, no-store",
+      "Set-Cookie": createAuthSessionCookie({
+        sessionToken,
+        expiresAt: session.expiresAt,
+        secure: services.secureAuthCookie,
+      }),
+    },
+  });
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const rootData = useRouteLoaderData<typeof loader>("root");
+  const location = useLocation();
   return (
     <html lang={rootData?.lang ?? "en"}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#2f5bff" />
+        <AdSenseHead />
         <Meta />
         <Links />
       </head>
@@ -55,6 +85,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
           Skip to content
         </a>
         {children}
+        <SiteFooter />
+        <AdSenseLoader pathname={location.pathname} />
         <ScrollRestoration />
         <Scripts />
       </body>

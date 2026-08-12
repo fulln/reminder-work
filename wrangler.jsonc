@@ -3,7 +3,7 @@
   "name": "reminder-work",
   "main": "src/worker.ts",
   "compatibility_date": "2026-08-08",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "workers_dev": true,
   "routes": [
     {
@@ -46,6 +46,13 @@
         "max_batch_timeout": 5,
         "max_retries": 3,
       },
+      {
+        "queue": "email-sending-events",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+        "dead_letter_queue": "email-sending-events-dlq",
+      },
     ],
   },
   "workflows": [
@@ -58,6 +65,8 @@
   "send_email": [
     {
       "name": "EMAIL",
+      "allowed_sender_addresses": ["reminders@reminders.work"],
+      "remote": true,
     },
   ],
   "vars": {

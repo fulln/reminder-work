@@ -1,9 +1,11 @@
+import type { OwnedReminderStore } from "../../../application/ports/owned-reminder-store";
 import type { PendingReminderStore } from "../../../application/ports/pending-reminder-store";
 import type { ReminderRepository } from "../../../application/ports/reminder-repository";
 import type { Reminder } from "../../../domain/reminder/reminder";
 
-interface ReminderRow {
+export interface ReminderRow {
   readonly id: string;
+  readonly owner_user_id: string | null;
   readonly version: number;
   readonly status: Reminder["status"];
   readonly schedule_json: string;
@@ -14,9 +16,10 @@ interface ReminderRow {
   readonly updated_at: string;
 }
 
-function fromRow(row: ReminderRow): Reminder {
+export function reminderFromRow(row: ReminderRow): Reminder {
   return {
     id: row.id,
+    ownerUserId: row.owner_user_id,
     version: row.version,
     status: row.status,
     schedule: JSON.parse(row.schedule_json) as Reminder["schedule"],
@@ -31,7 +34,7 @@ function fromRow(row: ReminderRow): Reminder {
 }
 
 export class D1ReminderRepository
-  implements ReminderRepository, PendingReminderStore
+  implements ReminderRepository, PendingReminderStore, OwnedReminderStore
 {
   constructor(private readonly database: D1Database) {}
 
@@ -40,6 +43,26 @@ export class D1ReminderRepository
     idempotencyKey: string,
   ): Promise<void> {
     await this.insert(reminder, idempotencyKey, "verification_requested");
+  }
+
+  async discardPending(reminderId: string): Promise<void> {
+    await this.database.batch([
+      this.database
+        .prepare(
+          `DELETE FROM outbox
+           WHERE reminder_id = ?
+             AND EXISTS (
+               SELECT 1 FROM reminders
+               WHERE id = ? AND status = 'pending_verification'
+             )`,
+        )
+        .bind(reminderId, reminderId),
+      this.database
+        .prepare(
+          "DELETE FROM reminders WHERE id = ? AND status = 'pending_verification'",
+        )
+        .bind(reminderId),
+    ]);
   }
 
   async create(reminder: Reminder, idempotencyKey: string): Promise<void> {
@@ -55,11 +78,12 @@ export class D1ReminderRepository
       this.database
         .prepare(
           `INSERT OR IGNORE INTO reminders
-           (id, version, status, schedule_json, delivery_plan_json, recipient_ref, content_ciphertext, created_at, updated_at, idempotency_key)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (id, owner_user_id, version, status, schedule_json, delivery_plan_json, recipient_ref, content_ciphertext, created_at, updated_at, idempotency_key)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           reminder.id,
+          reminder.ownerUserId ?? null,
           reminder.version,
           reminder.status,
           JSON.stringify(reminder.schedule),
@@ -83,7 +107,19 @@ export class D1ReminderRepository
       .prepare("SELECT * FROM reminders WHERE id = ?")
       .bind(id)
       .first<ReminderRow>();
-    return row === null ? null : fromRow(row);
+    return row === null ? null : reminderFromRow(row);
+  }
+
+  async findByOwner(ownerUserId: string): Promise<Reminder[]> {
+    const rows = await this.database
+      .prepare(
+        `SELECT * FROM reminders
+         WHERE owner_user_id = ?
+         ORDER BY updated_at DESC, created_at DESC, id DESC`,
+      )
+      .bind(ownerUserId)
+      .all<ReminderRow>();
+    return rows.results.map(reminderFromRow);
   }
 
   async save(reminder: Reminder, expectedVersion: number): Promise<boolean> {
@@ -104,10 +140,11 @@ export class D1ReminderRepository
         ),
       this.database
         .prepare(
-          `UPDATE reminders SET version = ?, status = ?, schedule_json = ?, delivery_plan_json = ?, updated_at = ?
+          `UPDATE reminders SET owner_user_id = ?, version = ?, status = ?, schedule_json = ?, delivery_plan_json = ?, updated_at = ?
            WHERE id = ? AND version = ?`,
         )
         .bind(
+          reminder.ownerUserId ?? null,
           reminder.version,
           reminder.status,
           JSON.stringify(reminder.schedule),

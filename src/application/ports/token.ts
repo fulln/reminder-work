@@ -6,6 +6,7 @@ export interface TokenClaims {
 
 export interface TokenPort {
   issue(claims: TokenClaims): Promise<string>;
+  revoke?(token: string, purpose: TokenClaims["purpose"]): Promise<void>;
   resolve(
     token: string,
     purpose: TokenClaims["purpose"],

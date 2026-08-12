@@ -24,6 +24,35 @@
   font-family: var(--font-time);
 }
 
+.delivery {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-signal) 5%, var(--color-surface));
+  border: 0.0625rem solid var(--color-border);
+  border-radius: var(--radius-medium);
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+  margin-block: var(--space-3);
+  padding: var(--space-2);
+}
+
+.delivery h2 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  margin: 0 0 0.25rem;
+}
+
+.delivery p {
+  color: var(--color-muted);
+  margin: 0;
+}
+
+.delivery > span {
+  color: var(--color-signal);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
 .actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

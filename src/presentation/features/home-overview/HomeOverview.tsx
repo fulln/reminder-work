@@ -1,3 +1,6 @@
+import { useRouteLoaderData } from "react-router";
+
+import type { loader as rootLoader } from "../../root";
 import styles from "./HomeOverview.module.css";
 
 const capabilities = [
@@ -59,6 +62,11 @@ const steps = [
 ] as const;
 
 export function HomeOverview() {
+  const rootData = useRouteLoaderData<typeof rootLoader>("root");
+  const user = rootData?.user ?? null;
+  const workspaceHref =
+    user === null ? (rootData?.authLoginUrl ?? "/auth/login") : "/reminders";
+
   return (
     <div className={styles.overview}>
       <section
@@ -178,7 +186,7 @@ export function HomeOverview() {
           <a className={styles.primaryAction} href="#main-content">
             Create a reminder
           </a>
-          <a className={styles.secondaryAction} href="/auth/login">
+          <a className={styles.secondaryAction} href={workspaceHref}>
             Open your workspace
           </a>
         </div>

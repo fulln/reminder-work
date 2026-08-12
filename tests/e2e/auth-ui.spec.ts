@@ -17,4 +17,8 @@ test("sends sign in to the centralized authentication service", async ({
   expect(authUrl.searchParams.get("return_to")).toBe(
     "http://127.0.0.1:5173/auth/callback",
   );
+
+  await expect(
+    page.getByRole("link", { name: "Open your workspace" }),
+  ).toHaveAttribute("href", href);
 });

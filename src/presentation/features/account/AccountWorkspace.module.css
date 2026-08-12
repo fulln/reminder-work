@@ -242,6 +242,40 @@
   margin-top: var(--space-2);
 }
 
+.sectionHeading {
+  border-top: 0.0625rem solid var(--color-border);
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+}
+
+.sectionHeading h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  letter-spacing: -0.04em;
+  margin: var(--space-1) 0;
+}
+
+.integrationActions {
+  display: flex;
+  margin-top: var(--space-3);
+}
+
+.disabledIntegration {
+  border: 0.0625rem solid var(--color-border);
+  border-radius: var(--radius-small);
+  color: var(--color-muted);
+  padding: 0.65rem var(--space-2);
+}
+
+.formCard form.webhookForm {
+  align-items: end;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.webhookForm button {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 40rem) {
   .page {
     padding: var(--space-2);
@@ -261,7 +295,8 @@
 
   .reminder,
   .identity,
-  .formCard form {
+  .formCard form,
+  .formCard form.webhookForm {
     grid-template-columns: 1fr;
   }
 

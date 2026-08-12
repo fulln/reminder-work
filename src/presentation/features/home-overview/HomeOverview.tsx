@@ -78,8 +78,8 @@ export function HomeOverview() {
           <p className="eyebrow">The whole system</p>
           <h2 id="features-title">Remember the work. Control the delivery.</h2>
           <p>
-            Reminders.work brings scheduling and email delivery into one small,
-            understandable workspace.
+            Reminders.work brings scheduling and multi-channel delivery into one
+            small, understandable workspace.
           </p>
         </div>
 
@@ -105,12 +105,12 @@ export function HomeOverview() {
             <p className={styles.cardNumber}>02 · EMAIL &amp; DELIVERY</p>
             <h3>Know where reminders can go.</h3>
             <p>
-              Reuse saved delivery addresses and see whether an address is
-              active or blocked without turning the site into an inbox.
+              Reuse saved email addresses and connect team destinations without
+              turning the site into an inbox or automation builder.
             </p>
             <ul>
               <li>Direct email and browser notification delivery</li>
-              <li>Saved addresses with active reminder counts</li>
+              <li>Connected Slack channels and signed HTTPS webhooks</li>
               <li>Recipient unsubscribe, bounce, and complaint protection</li>
             </ul>
             <a href="/settings/email">View email &amp; delivery</a>

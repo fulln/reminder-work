@@ -22,6 +22,7 @@ export const reminderDetailsSchema = z
       .default("email"),
     recipientEmail: optionalEmail.optional(),
     pushSubscription: pushSubscriptionSchema.optional(),
+    destinationIds: z.array(z.uuid()).max(8).default([]),
     localDate: z.iso.date("Choose a valid date."),
     localTime: z
       .string()

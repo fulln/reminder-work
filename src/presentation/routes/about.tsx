@@ -25,9 +25,10 @@ export default function AboutRoute() {
         </p>
         <h2>How it works</h2>
         <p>
-          You describe a task, review its exact local time, and choose email or
-          browser delivery. Scheduling runs on Cloudflare infrastructure, while
-          reminder content is encrypted at rest.
+          You describe a task, review its exact local time, and choose email,
+          browser, or connected team delivery. Scheduling runs on Cloudflare
+          infrastructure, while reminder content and destination credentials are
+          encrypted at rest.
         </p>
         <h2>Recipient control</h2>
         <p>

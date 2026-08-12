@@ -16,7 +16,7 @@ export const meta: Route.MetaFunction = () => [
   {
     name: "description",
     content:
-      "Create and manage one-time or recurring reminders with direct email and browser delivery, precise time zones, and recipient controls.",
+      "Create and manage one-time or recurring reminders with email, browser, Slack, and signed webhook delivery.",
   },
 ];
 
@@ -27,6 +27,9 @@ export function draftFromForm(form: FormData): ReminderDraftInput {
     return typeof value === "string" ? value : "";
   };
   const recurrenceKind = stringField("recurrenceKind");
+  const destinationIds = form
+    .getAll("destinationIds")
+    .flatMap((value) => (typeof value === "string" ? [value] : []));
   const deliveryModeValue = stringField("deliveryMode");
   const deliveryMode =
     deliveryModeValue === "web_push" ||
@@ -86,6 +89,7 @@ export function draftFromForm(form: FormData): ReminderDraftInput {
     localTime: stringField("localTime"),
     timeZone: stringField("timeZone"),
     turnstileToken: stringField("turnstileToken"),
+    destinationIds,
     recurrence,
     leadOffsetsMinutes: form
       .getAll("leadOffsetsMinutes")
@@ -205,7 +209,7 @@ export default function Home({ actionData }: Route.ComponentProps) {
         navigation={[
           { href: "#features", label: "Features" },
           { href: "#how-it-works", label: "How it works" },
-          { href: "#delivery", label: "Email delivery" },
+          { href: "#delivery", label: "Delivery" },
         ]}
       />
 

@@ -29,6 +29,7 @@ function contextWith(
     authLoginUrl:
       "https://auth.elemvisual.com/auth/login?site=reminder-work&return_to=https%3A%2F%2Freminders.work%2Fauth%2Fcallback",
     secureAuthCookie: true,
+    slackAvailable: false,
     reviewReminder: vi.fn(),
     createReminder: () => unavailable("request-1"),
     verifyReminder: () => unavailable("request-1"),
@@ -42,6 +43,18 @@ function contextWith(
     getEmailSettings: () => unavailable("request-1"),
     forgetSavedEmailRecipient: () => unavailable("request-1"),
     verifyEmailIdentity: () => unavailable("request-1"),
+    listDeliveryDestinations: () =>
+      Promise.resolve({
+        ok: true,
+        requestId: "request-1",
+        data: { destinations: [] },
+      }),
+    createWebhookDestination: () => unavailable("request-1"),
+    testDeliveryDestination: () => unavailable("request-1"),
+    setDeliveryDestinationEnabled: () => unavailable("request-1"),
+    deleteDeliveryDestination: () => unavailable("request-1"),
+    beginSlackConnection: () => unavailable("request-1"),
+    finishSlackConnection: () => unavailable("request-1"),
     ...overrides,
   };
   const context = new RouterContextProvider();

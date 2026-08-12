@@ -35,6 +35,12 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     sessionToken === null
       ? null
       : await services.auth.validateSession(sessionToken).catch(() => null);
+  const destinationResult =
+    session === null
+      ? null
+      : await services
+          .listDeliveryDestinations(session.user.id)
+          .catch(() => null);
   const loaderData = {
     lang: new URL(request.url).pathname.startsWith("/zh/")
       ? ("zh-CN" as const)
@@ -44,6 +50,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     turnstileSiteKey: services.turnstileSiteKey,
     vapidPublicKey: services.vapidPublicKey,
     useLocalTurnstileBypass: services.showLocalVerificationPreview,
+    deliveryDestinations:
+      destinationResult?.ok === true ? destinationResult.data.destinations : [],
   };
   if (sessionToken === null || session === null) return data(loaderData);
 

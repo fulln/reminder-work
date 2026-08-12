@@ -34,12 +34,18 @@ export default function PrivacyRoute() {
           <li>
             Delivery outcomes such as permanent bounces and spam complaints.
           </li>
+          <li>
+            Encrypted Slack and webhook destination credentials when an account
+            owner chooses to connect them.
+          </li>
         </ul>
         <h2>Service providers</h2>
         <p>
           Cloudflare provides hosting, storage, bot protection, queues, and
           email delivery. Google and GitHub may process account information when
-          you choose their sign-in options.
+          you choose their sign-in options. Slack processes reminder content
+          sent to a connected Slack channel. A webhook operator receives the
+          reminder content you explicitly route to its endpoint.
         </p>
         <h2>Advertising</h2>
         <p>

@@ -27,6 +27,9 @@ import { D1ReminderRepository } from "./infrastructure/cloudflare/d1/reminder-re
 import { D1CalendarFeedStore } from "./infrastructure/cloudflare/d1/calendar-feed-store";
 import { D1SuppressionRepository } from "./infrastructure/cloudflare/d1/suppression-repository";
 import { D1DeliveryClaimRepository } from "./infrastructure/cloudflare/d1/delivery-claim-repository";
+import { D1DeliveryDestinationRepository } from "./infrastructure/cloudflare/d1/delivery-destination-repository";
+import { D1DeliveryAttemptRepository } from "./infrastructure/cloudflare/d1/delivery-attempt-repository";
+import { D1SlackOAuthStateRepository } from "./infrastructure/cloudflare/d1/slack-oauth-state-repository";
 import { D1PushSubscriptionRepository } from "./infrastructure/cloudflare/d1/push-subscription-repository";
 import { D1EmailIdentityRepository } from "./infrastructure/cloudflare/d1/email-identity-repository";
 import { D1EmailIdentityVerificationTokenRepository } from "./infrastructure/cloudflare/d1/email-identity-verification-token-repository";
@@ -38,6 +41,18 @@ import { processDeliveryMessage } from "./infrastructure/cloudflare/queues/proce
 import { EMAIL_SENDING_EVENTS_QUEUE } from "./infrastructure/cloudflare/queues/email-sending-event";
 import { processEmailSendingEvent } from "./infrastructure/cloudflare/queues/process-email-sending-event";
 import { CloudflareWebPushAdapter } from "./infrastructure/cloudflare/web-push/web-push-adapter";
+import { SignedWebhookDeliveryAdapter } from "./infrastructure/cloudflare/delivery/signed-webhook-adapter";
+import { SlackDeliveryAdapter } from "./infrastructure/cloudflare/delivery/slack-delivery-adapter";
+import { SlackOAuthClient } from "./infrastructure/cloudflare/slack/slack-oauth-client";
+import {
+  beginSlackConnection,
+  createWebhookDestination,
+  deleteDeliveryDestination,
+  finishSlackConnection,
+  listDeliveryDestinations,
+  setDeliveryDestinationEnabled,
+  testDeliveryDestination,
+} from "./application/use-cases/delivery-destinations";
 import { reminderWorkflowMessageSchema } from "./infrastructure/cloudflare/workflows/reminder-workflow-message";
 import type { ReminderWorkflowMessage } from "./infrastructure/cloudflare/workflows/reminder-workflow-message";
 import { CloudflareWorkflowScheduler } from "./infrastructure/cloudflare/workflows/cloudflare-workflow-scheduler";
@@ -126,6 +141,18 @@ export default {
       env.DB,
       env.CONTENT_ENCRYPTION_KEY,
     );
+    const deliveryDestinations = new D1DeliveryDestinationRepository(
+      env.DB,
+      env.CONTENT_ENCRYPTION_KEY,
+    );
+    const deliveryAttempts = new D1DeliveryAttemptRepository(env.DB);
+    const slackStates = new D1SlackOAuthStateRepository(env.DB);
+    const slackDelivery = new SlackDeliveryAdapter();
+    const webhookDelivery = new SignedWebhookDeliveryAdapter();
+    const slackOAuth = new SlackOAuthClient(
+      env.SLACK_CLIENT_ID,
+      env.SLACK_CLIENT_SECRET,
+    );
     const turnstile =
       env.TURNSTILE_SECRET_KEY === undefined
         ? new LocalTurnstileAdapter(requestOrigin)
@@ -158,6 +185,7 @@ export default {
       scheduler: new CloudflareWorkflowScheduler(env.REMINDER_WORKFLOW),
       tokens,
       emailIdentities,
+      deliveryDestinations,
     };
 
     const context = new RouterContextProvider();
@@ -170,6 +198,7 @@ export default {
       authCallbackUrl,
       authLoginUrl: authLoginUrl.toString(),
       secureAuthCookie: new URL(requestOrigin).protocol === "https:",
+      slackAvailable: slackOAuth.available,
       reviewReminder,
       createReminder: async (input, ownerUserId) =>
         createReminder(dependencies, input, requestId, {
@@ -285,6 +314,101 @@ export default {
           ),
           "Email verified.",
         ),
+      listDeliveryDestinations: (userId) =>
+        listDeliveryDestinations(
+          { destinations: deliveryDestinations },
+          userId,
+          requestId,
+        ),
+      createWebhookDestination: async (userId, input) =>
+        emailSettingsMessage(
+          await createWebhookDestination(
+            {
+              clock,
+              ids: { create: () => crypto.randomUUID() },
+              destinations: deliveryDestinations,
+            },
+            userId,
+            input,
+            requestId,
+          ),
+          "Webhook destination saved.",
+        ),
+      testDeliveryDestination: async (userId, destinationId) =>
+        emailSettingsMessage(
+          await testDeliveryDestination(
+            {
+              clock,
+              ids: { create: () => crypto.randomUUID() },
+              destinations: deliveryDestinations,
+              attempts: deliveryAttempts,
+              slackDelivery,
+              webhookDelivery,
+              origin: requestOrigin,
+            },
+            userId,
+            destinationId,
+            requestId,
+          ),
+          "Test delivery sent.",
+        ),
+      setDeliveryDestinationEnabled: async (userId, destinationId, enabled) =>
+        emailSettingsMessage(
+          await setDeliveryDestinationEnabled(
+            { clock, destinations: deliveryDestinations },
+            userId,
+            destinationId,
+            enabled,
+            requestId,
+          ),
+          enabled
+            ? "Delivery destination enabled."
+            : "Delivery destination paused.",
+        ),
+      deleteDeliveryDestination: async (userId, destinationId) =>
+        emailSettingsMessage(
+          await deleteDeliveryDestination(
+            { destinations: deliveryDestinations, slackOAuth },
+            userId,
+            destinationId,
+            requestId,
+          ),
+          "Delivery destination removed.",
+        ),
+      beginSlackConnection: (userId) =>
+        beginSlackConnection(
+          {
+            clock,
+            states: slackStates,
+            slackOAuth,
+            redirectUri: new URL(
+              "/integrations/slack/callback",
+              requestOrigin,
+            ).toString(),
+          },
+          userId,
+          requestId,
+        ),
+      finishSlackConnection: async (userId, input) =>
+        emailSettingsMessage(
+          await finishSlackConnection(
+            {
+              clock,
+              ids: { create: () => crypto.randomUUID() },
+              states: slackStates,
+              slackOAuth,
+              destinations: deliveryDestinations,
+              redirectUri: new URL(
+                "/integrations/slack/callback",
+                requestOrigin,
+              ).toString(),
+            },
+            userId,
+            input,
+            requestId,
+          ),
+          (result) => `${result.destination.label} connected.`,
+        ),
     });
     return handleRequest(request, context);
   },
@@ -319,6 +443,10 @@ export default {
       env.DB,
       env.CONTENT_ENCRYPTION_KEY,
     );
+    const destinations = new D1DeliveryDestinationRepository(
+      env.DB,
+      env.CONTENT_ENCRYPTION_KEY,
+    );
     const webPush =
       env.VAPID_PRIVATE_KEY === undefined
         ? {
@@ -338,6 +466,10 @@ export default {
       email: new CloudflareEmailServiceAdapter(env.EMAIL, env.EMAIL_FROM),
       pushSubscriptions,
       webPush,
+      destinations,
+      attempts: new D1DeliveryAttemptRepository(env.DB),
+      slackDelivery: new SlackDeliveryAdapter(),
+      webhookDelivery: new SignedWebhookDeliveryAdapter(),
       logger,
       origin: env.APP_ORIGIN,
       now: () => new Date(),

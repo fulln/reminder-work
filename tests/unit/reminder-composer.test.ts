@@ -66,6 +66,7 @@ describe("composer create response", () => {
       authLoginUrl:
         "http://localhost:8787/auth/login?site=reminder-work&return_to=http%3A%2F%2Flocalhost%3A5173%2Fauth%2Fcallback",
       secureAuthCookie: false,
+      slackAvailable: false,
       reviewReminder,
       createReminder: () =>
         Promise.resolve({
@@ -88,6 +89,18 @@ describe("composer create response", () => {
       getEmailSettings: () => unavailable("request-1"),
       forgetSavedEmailRecipient: () => unavailable("request-1"),
       verifyEmailIdentity: () => unavailable("request-1"),
+      listDeliveryDestinations: () =>
+        Promise.resolve({
+          ok: true,
+          requestId: "request-1",
+          data: { destinations: [] },
+        }),
+      createWebhookDestination: () => unavailable("request-1"),
+      testDeliveryDestination: () => unavailable("request-1"),
+      setDeliveryDestinationEnabled: () => unavailable("request-1"),
+      deleteDeliveryDestination: () => unavailable("request-1"),
+      beginSlackConnection: () => unavailable("request-1"),
+      finishSlackConnection: () => unavailable("request-1"),
     };
     const form = new FormData();
     form.set("intent", "create");

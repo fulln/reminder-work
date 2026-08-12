@@ -111,6 +111,128 @@ describe("delivery safety", () => {
     expect(email.sendReminder).toHaveBeenCalledTimes(2);
   });
 
+  it("retries a failed external destination without duplicating email", async () => {
+    const externalReminder: Reminder = {
+      ...reminder,
+      ownerUserId: "user-1",
+      deliveryPlan: {
+        mode: "email",
+        targets: [
+          { channel: "email" },
+          { channel: "destination", destinationId: "destination-1" },
+        ],
+      },
+    };
+    const sentClaims = new Set<string>();
+    const email = { sendReminder: vi.fn().mockResolvedValue(undefined) };
+    const webhookDelivery = {
+      send: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("temporary webhook failure"))
+        .mockResolvedValueOnce(undefined),
+    };
+    const attempts = {
+      countRecentTests: vi.fn().mockResolvedValue(0),
+      record: vi.fn().mockResolvedValue(undefined),
+    };
+    const destinations = {
+      create: vi.fn(),
+      replaceCredential: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "destination-1",
+        ownerUserId: "user-1",
+        type: "webhook",
+        label: "Automation",
+        status: "active",
+        credential: {
+          kind: "webhook",
+          url: "https://hooks.example.com/reminders",
+          signingSecret: "sixteen-character-secret",
+        },
+        consecutiveFailures: 0,
+        createdAt: "2026-08-10T00:00:00.000Z",
+        updatedAt: "2026-08-10T00:00:00.000Z",
+      }),
+      findByOwner: vi.fn(),
+      findSlackChannel: vi.fn(),
+      setEnabled: vi.fn(),
+      delete: vi.fn(),
+      markSucceeded: vi.fn().mockResolvedValue(undefined),
+      markFailed: vi.fn().mockResolvedValue(undefined),
+    };
+    const dependencies = {
+      reminders: {
+        create: vi.fn(),
+        findById: vi.fn().mockResolvedValue(externalReminder),
+        save: vi.fn(),
+      },
+      suppressions: {
+        suppress: vi.fn(),
+        isSuppressed: vi.fn().mockResolvedValue(false),
+      },
+      claims: {
+        claim: vi.fn((key: string) => Promise.resolve(!sentClaims.has(key))),
+        markFailed: vi.fn((key: string) => {
+          sentClaims.delete(key);
+          return Promise.resolve();
+        }),
+        markSent: vi.fn((key: string) => {
+          sentClaims.add(key);
+          return Promise.resolve();
+        }),
+      },
+      protector: {
+        protect: vi.fn(),
+        unprotect: vi.fn().mockResolvedValue({
+          title: "Private title",
+          recipientEmail: "private@example.com",
+        }),
+      },
+      tokens: {
+        issue: vi.fn().mockResolvedValue("opaque-token"),
+        resolve: vi.fn(),
+        consume: vi.fn(),
+      },
+      email,
+      pushSubscriptions: {
+        upsert: vi.fn(),
+        findActiveById: vi.fn(),
+        revoke: vi.fn(),
+      },
+      webPush: { send: vi.fn() },
+      destinations,
+      attempts,
+      slackDelivery: { send: vi.fn() },
+      webhookDelivery,
+      logger: { info: vi.fn(), error: vi.fn() },
+      origin: "https://reminders.work",
+      now: () => new Date("2026-08-10T00:00:00.000Z"),
+    };
+    const message = () => ({
+      body: {
+        schemaVersion: 1,
+        kind: "reminder_delivery",
+        reminderId: "reminder-1",
+        expectedVersion: 3,
+        idempotencyKey: "occurrence-1",
+        traceId: "trace-1",
+      },
+      ack: vi.fn(),
+      retry: vi.fn(),
+    });
+    const first = message();
+    await processDeliveryMessage(dependencies, first);
+    expect(first.retry).toHaveBeenCalledOnce();
+    const second = message();
+    await processDeliveryMessage(dependencies, second);
+    expect(email.sendReminder).toHaveBeenCalledOnce();
+    expect(webhookDelivery.send).toHaveBeenCalledTimes(2);
+    expect(attempts.record).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "sent" }),
+    );
+    expect(second.ack).toHaveBeenCalledOnce();
+  });
+
   it("redacts content, email addresses, and tokens from structured logs", () => {
     const output: string[] = [];
     const logger = new RedactedLogger((line) => output.push(line));

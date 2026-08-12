@@ -167,6 +167,37 @@
   margin-bottom: 0;
 }
 
+.externalDestination {
+  align-items: flex-start;
+  border: 0.0625rem solid var(--color-border);
+  border-radius: var(--radius-small);
+  cursor: pointer;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-2);
+}
+
+.externalDestination:has(input:checked) {
+  background: color-mix(in srgb, var(--color-signal) 6%, var(--color-surface));
+  border-color: var(--color-signal);
+}
+
+.externalDestination span {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.externalDestination small {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.manageDestinations {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 .pushField {
   display: grid;
   gap: var(--space-1);

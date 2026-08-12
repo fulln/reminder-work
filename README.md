@@ -18,6 +18,8 @@ an address-wide opt-out that reminder creators cannot reverse.
 - Complete, snooze, reschedule, cancel, and unsubscribe flows
 - Direct email scheduling with Turnstile, privacy-preserving rate limits, and
   recipient-controlled suppression
+- Account-owned Slack channels and signed HTTPS webhooks as optional fan-out
+  destinations
 - IANA time-zone and daylight-saving-time handling
 - English-first SEO pages with Chinese routes under `/zh/*`
 - Keyboard, reduced-motion, mobile, and WCAG-oriented interaction coverage
@@ -33,6 +35,8 @@ The application is a Cloudflare-native modular monolith:
 - Queues for delivery retries and idempotency
 - Cloudflare Email Service for reminder delivery, with hard-bounce and complaint
   events synchronized back into D1 recipient suppression
+- Slack Incoming Webhooks installed through OAuth v2 and generic webhooks signed
+  with HMAC-SHA256
 - Turnstile for abuse prevention
 - `fl-user-auth` through a Cloudflare Worker Service Binding for Google and
   GitHub OAuth, site-bound sessions, and logout revocation
@@ -108,6 +112,18 @@ npx wrangler secret put CONTENT_ENCRYPTION_KEY
 npx wrangler secret put TURNSTILE_SECRET_KEY
 npm run deploy
 ```
+
+Slack delivery is optional. Create a Slack app from
+[`docs/integrations/slack-app-manifest.yml`](docs/integrations/slack-app-manifest.yml),
+then set the app credentials before deploying:
+
+```bash
+npx wrangler secret put SLACK_CLIENT_ID
+npx wrangler secret put SLACK_CLIENT_SECRET
+```
+
+Webhook destinations need no provider credentials. Their URL and signing secret
+are encrypted with `CONTENT_ENCRYPTION_KEY`.
 
 Apply migrations to the production database separately with Wrangler's `--remote`
 flag. Review [the verification notes](specs/001-reminder-web-foundation/verification.md)

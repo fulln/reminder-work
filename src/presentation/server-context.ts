@@ -12,6 +12,7 @@ import type { ManageReminderInput } from "../application/use-cases/manage-remind
 import type { AuthServicePort } from "../application/ports/auth-service";
 import type { ReminderStatus } from "../domain/reminder/reminder";
 import type { ReminderSchedule } from "../domain/reminder/schedule";
+import type { DeliveryDestinationView } from "../application/use-cases/delivery-destinations";
 
 export interface OwnedReminderSummary {
   readonly id: string;
@@ -61,6 +62,7 @@ export interface ApplicationServices {
   readonly authCallbackUrl: string;
   readonly authLoginUrl: string;
   readonly secureAuthCookie: boolean;
+  readonly slackAvailable: boolean;
   reviewReminder(input: ReminderDetailsInput): ReviewReminderResult;
   createReminder(
     input: ReminderDraftInput,
@@ -108,6 +110,39 @@ export interface ApplicationServices {
     recipientId: string,
   ): Promise<EmailSettingsActionResult>;
   verifyEmailIdentity(token: string): Promise<EmailSettingsActionResult>;
+  listDeliveryDestinations(userId: string): Promise<
+    ActionResult<{
+      readonly destinations: readonly DeliveryDestinationView[];
+    }>
+  >;
+  createWebhookDestination(
+    userId: string,
+    input: {
+      readonly label: string;
+      readonly url: string;
+      readonly signingSecret: string;
+    },
+  ): Promise<ActionResult<{ readonly message: string }>>;
+  testDeliveryDestination(
+    userId: string,
+    destinationId: string,
+  ): Promise<ActionResult<{ readonly message: string }>>;
+  setDeliveryDestinationEnabled(
+    userId: string,
+    destinationId: string,
+    enabled: boolean,
+  ): Promise<ActionResult<{ readonly message: string }>>;
+  deleteDeliveryDestination(
+    userId: string,
+    destinationId: string,
+  ): Promise<ActionResult<{ readonly message: string }>>;
+  beginSlackConnection(
+    userId: string,
+  ): Promise<ActionResult<{ readonly authorizationUrl: string }>>;
+  finishSlackConnection(
+    userId: string,
+    input: { readonly state: string; readonly code: string },
+  ): Promise<ActionResult<{ readonly message: string }>>;
 }
 
 export const applicationServicesContext = createContext<ApplicationServices>();

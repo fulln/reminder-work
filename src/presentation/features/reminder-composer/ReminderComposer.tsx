@@ -187,6 +187,14 @@ function HiddenDraft({ reminder }: { readonly reminder: ReviewedReminder }) {
           value={JSON.stringify(reminder.pushSubscription)}
         />
       )}
+      {reminder.destinationIds.map((destinationId) => (
+        <input
+          key={destinationId}
+          type="hidden"
+          name="destinationIds"
+          value={destinationId}
+        />
+      ))}
       <input type="hidden" name="localDate" value={reminder.localDate} />
       <input type="hidden" name="localTime" value={reminder.localTime} />
       <input type="hidden" name="timeZone" value={reminder.timeZone} />
@@ -335,6 +343,18 @@ export function ReminderComposer({
   const [browserSelected, setBrowserSelected] = useState(
     initialDeliveryMode !== "email",
   );
+  const initialDestinationIds = (() => {
+    const value = fieldValue(actionData, "destinationIds");
+    if (value === "") return [];
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return Array.isArray(parsed)
+        ? parsed.filter((item): item is string => typeof item === "string")
+        : [];
+    } catch {
+      return [];
+    }
+  })();
   const deliveryMode: DeliveryMode = emailSelected
     ? browserSelected
       ? "web_push_email_fallback"
@@ -435,6 +455,9 @@ export function ReminderComposer({
         <p className={styles.step}>
           Reminder active · {emailDelivery ? "Email" : "Browser"}
           {emailDelivery && browserDelivery ? " + browser" : ""} delivery
+          {(actionData.result.destinationCount ?? 0) > 0
+            ? ` + ${String(actionData.result.destinationCount)} saved destination${actionData.result.destinationCount === 1 ? "" : "s"}`
+            : ""}
         </p>
         <h2 id="active-title">
           {emailDelivery
@@ -497,6 +520,9 @@ export function ReminderComposer({
                 : actionData.reminder.deliveryMode === "web_push"
                   ? "Browser notification"
                   : "Browser notification · Email backup"}
+              {actionData.reminder.destinationIds.length > 0
+                ? ` · ${String(actionData.reminder.destinationIds.length)} saved destination${actionData.reminder.destinationIds.length === 1 ? "" : "s"}`
+                : ""}
             </dd>
           </div>
           {actionData.reminder.recurrence === null ||
@@ -818,7 +844,39 @@ export function ReminderComposer({
                 </div>
               ) : null}
             </div>
+            {rootData?.deliveryDestinations.map((destination) => (
+              <label
+                className={styles.externalDestination}
+                key={destination.id}
+              >
+                <input
+                  type="checkbox"
+                  name="destinationIds"
+                  value={destination.id}
+                  defaultChecked={initialDestinationIds.includes(
+                    destination.id,
+                  )}
+                  disabled={destination.status === "disabled"}
+                />
+                <span>
+                  <strong>{destination.label}</strong>
+                  <small>
+                    {destination.type === "slack" ? "Slack" : "Webhook"} ·{" "}
+                    {destination.detail}
+                    {destination.status === "failing"
+                      ? " · Needs attention"
+                      : ""}
+                  </small>
+                </span>
+              </label>
+            ))}
           </div>
+          {rootData?.user === null ? null : (
+            <a className={styles.manageDestinations} href="/settings/email">
+              Manage Slack and webhook delivery
+            </a>
+          )}
+          <FieldError actionData={actionData} name="destinationIds" />
           <input type="hidden" name="deliveryMode" value={deliveryMode} />
         </fieldset>
       ) : null}

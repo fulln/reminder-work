@@ -61,6 +61,8 @@ const emailReminder = {
   turnstileToken: "test-pass",
 };
 
+const destinationId = "11111111-1111-4111-8111-111111111111";
+
 describe("createReminder", () => {
   it("activates and schedules an email reminder without verification", async () => {
     const deps = dependencies();
@@ -148,6 +150,105 @@ describe("createReminder", () => {
     expect(deps.emailCreationLimiter.reserve).toHaveBeenCalledWith(
       expect.objectContaining({ actorLimit: 25 }),
     );
+  });
+
+  it("fans out an authenticated reminder only to an owned destination", async () => {
+    const deps: CreateReminderDependencies = {
+      ...dependencies(),
+      deliveryDestinations: {
+        create: vi.fn(),
+        replaceCredential: vi.fn(),
+        findById: vi.fn().mockResolvedValue({
+          id: destinationId,
+          ownerUserId: "user-1",
+          type: "webhook",
+          label: "Automation",
+          status: "active",
+          credential: {
+            kind: "webhook",
+            url: "https://hooks.example.com/reminders",
+            signingSecret: "sixteen-character-secret",
+          },
+          consecutiveFailures: 0,
+          createdAt: "2026-08-10T10:00:00.000Z",
+          updatedAt: "2026-08-10T10:00:00.000Z",
+        }),
+        findByOwner: vi.fn(),
+        findSlackChannel: vi.fn(),
+        setEnabled: vi.fn(),
+        delete: vi.fn(),
+        markSucceeded: vi.fn(),
+        markFailed: vi.fn(),
+      },
+    };
+
+    const result = await createReminder(
+      deps,
+      { ...emailReminder, destinationIds: [destinationId] },
+      "request-destination",
+      { ownerUserId: "user-1", actorRef: "user-actor" },
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: { destinationCount: 1 },
+    });
+    expect(deps.reminders.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deliveryPlan: {
+          mode: "email",
+          targets: [
+            { channel: "email" },
+            { channel: "destination", destinationId },
+          ],
+        },
+      }),
+      "request-destination",
+    );
+  });
+
+  it("rejects another account's destination before persisting", async () => {
+    const deps: CreateReminderDependencies = {
+      ...dependencies(),
+      deliveryDestinations: {
+        create: vi.fn(),
+        replaceCredential: vi.fn(),
+        findById: vi.fn().mockResolvedValue({
+          id: destinationId,
+          ownerUserId: "user-2",
+          type: "webhook",
+          label: "Other account",
+          status: "active",
+          credential: {
+            kind: "webhook",
+            url: "https://hooks.example.com/reminders",
+            signingSecret: "sixteen-character-secret",
+          },
+          consecutiveFailures: 0,
+          createdAt: "2026-08-10T10:00:00.000Z",
+          updatedAt: "2026-08-10T10:00:00.000Z",
+        }),
+        findByOwner: vi.fn(),
+        findSlackChannel: vi.fn(),
+        setEnabled: vi.fn(),
+        delete: vi.fn(),
+        markSucceeded: vi.fn(),
+        markFailed: vi.fn(),
+      },
+    };
+
+    const result = await createReminder(
+      deps,
+      { ...emailReminder, destinationIds: [destinationId] },
+      "request-other-destination",
+      { ownerUserId: "user-1", actorRef: "user-actor" },
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "DELIVERY_DESTINATION_UNAVAILABLE" },
+    });
+    expect(deps.reminders.create).not.toHaveBeenCalled();
   });
 
   it("does not let a creator override the recipient's global opt-out", async () => {

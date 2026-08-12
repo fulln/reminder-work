@@ -9,6 +9,8 @@ export default [
   route("reminders", "routes/reminders.tsx"),
   route("reminders/:id", "routes/owned-reminder.tsx"),
   route("settings/email", "routes/email-settings.tsx"),
+  route("integrations/slack/start", "routes/slack-start.ts"),
+  route("integrations/slack/callback", "routes/slack-callback.ts"),
   route("verify-email/:token", "routes/verify-email-identity.tsx"),
   route("verify/:token", "routes/verify.tsx"),
   route("manage/:token", "routes/manage.tsx"),

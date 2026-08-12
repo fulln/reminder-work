@@ -4,6 +4,7 @@ import type { ReminderDraftInput } from "../contracts/create-reminder";
 import type { Clock } from "../ports/clock";
 import type { ContentProtector } from "../ports/content-protector";
 import type { EmailIdentityRepository } from "../ports/email-identity-repository";
+import type { DeliveryDestinationRepository } from "../ports/delivery-destination-repository";
 import type { EmailReminderCreationLimiter } from "../ports/email-reminder-creation-limiter";
 import type { IdGenerator } from "../ports/id-generator";
 import type { PushSubscriptionRepository } from "../ports/push-subscription-repository";
@@ -36,11 +37,13 @@ export interface CreateReminderDependencies {
   readonly scheduler: ReminderSchedulerPort;
   readonly tokens: TokenPort;
   readonly emailIdentities?: EmailIdentityRepository;
+  readonly deliveryDestinations?: DeliveryDestinationRepository;
 }
 
 export interface CreateReminderAccepted {
   readonly state: "active";
   readonly channels: readonly ("email" | "web_push")[];
+  readonly destinationCount?: number;
   readonly manageToken: string;
 }
 
@@ -52,7 +55,13 @@ export interface CreateReminderOptions {
 function channelsFor(
   plan: Reminder["deliveryPlan"],
 ): readonly ("email" | "web_push")[] {
-  return [...new Set(plan.targets.map((target) => target.channel))];
+  return [
+    ...new Set(
+      plan.targets.flatMap((target) =>
+        target.channel === "destination" ? [] : [target.channel],
+      ),
+    ),
+  ];
 }
 
 export async function createReminder(
@@ -81,6 +90,40 @@ export async function createReminder(
 
   const now = dependencies.clock.now();
   const id = dependencies.ids.create();
+  const ownerUserId = options.ownerUserId ?? null;
+  const destinationIds = [...new Set(review.value.destinationIds)];
+  if (destinationIds.length > 0) {
+    const deliveryDestinations = dependencies.deliveryDestinations;
+    if (ownerUserId === null || deliveryDestinations === undefined) {
+      return failure(requestId, {
+        code: "DELIVERY_DESTINATION_UNAVAILABLE",
+        retryable: false,
+        fields: {
+          destinationIds: ["Sign in to use saved delivery destinations."],
+        },
+      });
+    }
+    const destinations = await Promise.all(
+      destinationIds.map((destinationId) =>
+        deliveryDestinations.findById(destinationId),
+      ),
+    );
+    if (
+      destinations.some(
+        (destination) =>
+          destination?.ownerUserId !== ownerUserId ||
+          destination.status === "disabled",
+      )
+    ) {
+      return failure(requestId, {
+        code: "DELIVERY_DESTINATION_UNAVAILABLE",
+        retryable: false,
+        fields: {
+          destinationIds: ["A selected delivery destination is unavailable."],
+        },
+      });
+    }
+  }
   const pushSubscriptionId =
     review.value.pushSubscription === undefined
       ? undefined
@@ -91,9 +134,9 @@ export async function createReminder(
   const deliveryPlan = createDeliveryPlan(
     review.value.deliveryMode,
     pushSubscriptionId,
+    destinationIds,
   );
   const emailRequired = includesEmail(deliveryPlan);
-  const ownerUserId = options.ownerUserId ?? null;
   const recipientEmail = review.value.recipientEmail;
   const recipientIdentity =
     recipientEmail ?? `push:${String(pushSubscriptionId)}`;
@@ -208,6 +251,7 @@ export async function createReminder(
   return success(requestId, {
     state: "active",
     channels: channelsFor(deliveryPlan),
+    destinationCount: destinationIds.length,
     manageToken,
   });
 }

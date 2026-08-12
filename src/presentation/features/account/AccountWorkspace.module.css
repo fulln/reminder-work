@@ -1,0 +1,275 @@
+.page {
+  margin: 0 auto;
+  max-width: 78rem;
+  padding: var(--space-3);
+}
+
+.main {
+  margin: 0 auto;
+  max-width: 54rem;
+  padding-block: var(--space-2) var(--space-6);
+}
+
+.headingRow {
+  align-items: end;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.headingRow h1,
+.main > h1 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1.05;
+  margin: var(--space-1) 0;
+  max-width: none;
+}
+
+.lede,
+.muted,
+.reminderMeta,
+.emailMeta,
+.identityNote {
+  color: var(--color-muted);
+}
+
+.lede {
+  margin: 0;
+  max-width: 42rem;
+}
+
+.primaryLink {
+  background: var(--color-signal);
+  border-radius: var(--radius-small);
+  color: var(--color-surface);
+  flex: 0 0 auto;
+  font-weight: 700;
+  padding: 0.75rem var(--space-2);
+  text-decoration: none;
+}
+
+.list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.reminder,
+.identity,
+.setting,
+.empty,
+.formCard {
+  background: var(--color-surface);
+  border: 0.0625rem solid var(--color-border);
+  border-radius: var(--radius-medium);
+  padding: var(--space-3);
+}
+
+.reminder {
+  align-items: center;
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: 8rem minmax(0, 1fr) auto;
+}
+
+.reminder h2,
+.identity h2,
+.setting h2,
+.formCard h2 {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  line-height: 1.25;
+  margin: 0 0 0.35rem;
+}
+
+.reminderMeta,
+.emailMeta,
+.identityNote,
+.setting p {
+  margin: 0;
+}
+
+.delivery {
+  color: var(--color-muted);
+  display: block;
+  font-size: 0.875rem;
+  margin-top: var(--space-1);
+}
+
+.status,
+.verified,
+.pending,
+.suppressed {
+  border-radius: 999rem;
+  display: inline-flex;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  padding: 0.35rem 0.65rem;
+  width: max-content;
+}
+
+.active,
+.verified {
+  background: color-mix(
+    in srgb,
+    var(--color-complete) 11%,
+    var(--color-surface)
+  );
+  color: var(--color-complete);
+}
+
+.pending {
+  background: color-mix(in srgb, var(--color-due) 12%, var(--color-surface));
+  color: var(--color-due);
+}
+
+.terminal,
+.suppressed {
+  background: color-mix(in srgb, var(--color-muted) 10%, var(--color-surface));
+  color: var(--color-muted);
+}
+
+.manageLink,
+.secondaryButton,
+.dangerButton {
+  background: var(--color-surface);
+  border: 0.0625rem solid var(--color-border);
+  border-radius: var(--radius-small);
+  color: var(--color-ink);
+  display: inline-flex;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.65rem var(--space-2);
+  text-decoration: none;
+  width: auto;
+}
+
+.dangerButton {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.feedback,
+.error {
+  border-radius: var(--radius-small);
+  margin-block: var(--space-2);
+  padding: var(--space-2);
+}
+
+.feedback {
+  background: color-mix(
+    in srgb,
+    var(--color-complete) 9%,
+    var(--color-surface)
+  );
+  color: var(--color-complete);
+}
+
+.error {
+  background: color-mix(in srgb, var(--color-error) 8%, var(--color-surface));
+  color: var(--color-error);
+}
+
+.formCard {
+  margin-block: var(--space-4) var(--space-2);
+}
+
+.formCard form {
+  align-items: end;
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-top: var(--space-2);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.field input {
+  background: var(--color-surface);
+  border: 0.0625rem solid var(--color-border);
+  border-radius: var(--radius-small);
+  color: var(--color-ink);
+  min-height: 2.75rem;
+  padding: 0.65rem var(--space-2);
+  width: 100%;
+}
+
+.identity {
+  align-items: start;
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.identityHeading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.identityHeading h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.identityNote {
+  border-top: 0.0625rem solid var(--color-border);
+  grid-column: 1 / -1;
+  padding-top: var(--space-2);
+}
+
+.actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.actions form {
+  margin: 0;
+}
+
+.setting {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 40rem) {
+  .page {
+    padding: var(--space-2);
+  }
+
+  .headingRow,
+  .setting {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .primaryLink,
+  .setting button {
+    text-align: center;
+    width: 100%;
+  }
+
+  .reminder,
+  .identity,
+  .formCard form {
+    grid-template-columns: 1fr;
+  }
+
+  .manageLink,
+  .actions,
+  .actions form,
+  .actions button,
+  .formCard button {
+    width: 100%;
+  }
+}

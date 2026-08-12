@@ -44,8 +44,8 @@ describe("reviewReminder", () => {
   });
 });
 
-describe("composer response privacy", () => {
-  it("removes the local verification preview token outside local development", async () => {
+describe("composer create response", () => {
+  it("returns the active reminder payload without verification-only fields", async () => {
     const unavailable = (requestId: string) =>
       Promise.resolve({
         ok: false as const,
@@ -72,10 +72,9 @@ describe("composer response privacy", () => {
           ok: true,
           requestId: "request-1",
           data: {
-            state: "pending_verification",
-            maskedRecipient: "o***r@example.com",
-            expiresAt: "2026-08-10T01:00:00.000Z",
-            verificationToken: "must-not-leak",
+            state: "active",
+            channels: ["email"] as const,
+            manageToken: "manage-token",
           },
         }),
       verifyReminder: () => unavailable("request-1"),
@@ -83,16 +82,27 @@ describe("composer response privacy", () => {
       getReminderView: () => unavailable("request-1"),
       manageReminder: () => unavailable("request-1"),
       unsubscribe: () => unavailable("request-1"),
+      listOwnedReminders: () => unavailable("request-1"),
+      getOwnedReminderView: () => unavailable("request-1"),
+      manageOwnedReminder: () => unavailable("request-1"),
+      getEmailSettings: () => unavailable("request-1"),
+      forgetSavedEmailRecipient: () => unavailable("request-1"),
+      verifyEmailIdentity: () => unavailable("request-1"),
     };
     const form = new FormData();
     form.set("intent", "create");
     const result = await handleComposerAction(form, services);
-    expect(result).toMatchObject({ stage: "created" });
+    expect(result).toMatchObject({
+      stage: "created",
+      result: {
+        state: "active",
+        channels: ["email"],
+        manageToken: "manage-token",
+      },
+    });
     if (result?.stage === "created") {
-      if (result.result.state === "pending_verification") {
-        expect(result.result.verificationToken).toBeUndefined();
-      }
-      expect(JSON.stringify(result)).not.toContain("must-not-leak");
+      expect(JSON.stringify(result)).not.toContain("verificationToken");
+      expect(JSON.stringify(result)).not.toContain("maskedRecipient");
     }
   });
 });

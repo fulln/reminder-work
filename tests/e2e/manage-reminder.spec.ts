@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-async function createAndVerify(page: Page) {
+async function createAndOpenManagement(page: Page) {
   await page.goto("/");
   await page
     .getByRole("button", { name: "Choose date & time manually" })
@@ -14,15 +14,11 @@ async function createAndVerify(page: Page) {
   await page.getByLabel("Time", { exact: true }).fill("09:00");
   await page.getByRole("button", { name: "Review reminder" }).click();
   await page.getByRole("button", { name: "Create reminder" }).click();
-  await page
-    .getByRole("link", { name: "Open local verification preview" })
-    .click();
-  await page.getByRole("button", { name: "Verify email" }).click();
+  await page.getByRole("link", { name: "Manage reminder" }).click();
 }
 
 test("completes an active reminder from its secure link", async ({ page }) => {
-  await createAndVerify(page);
-  await page.getByRole("link", { name: "Manage reminder" }).click();
+  await createAndOpenManagement(page);
   await expect(
     page.getByRole("heading", { name: "Send launch brief" }),
   ).toBeVisible();
@@ -41,8 +37,7 @@ test("does not reveal details for invalid links", async ({ page }) => {
 
 test("keeps management usable at 320px", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 760 });
-  await createAndVerify(page);
-  await page.getByRole("link", { name: "Manage reminder" }).click();
+  await createAndOpenManagement(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     320,
   );

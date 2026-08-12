@@ -5,6 +5,7 @@ const allowed = new Set([
   "requestId",
   "traceId",
   "reminderId",
+  "eventId",
   "attempt",
 ]);
 

@@ -15,7 +15,9 @@ async function revealScheduleDetails(page: Page) {
   }).toPass();
 }
 
-test("reviews exact time then reaches email verification", async ({ page }) => {
+test("reviews exact time then activates the reminder directly", async ({
+  page,
+}) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Set it once",
@@ -53,30 +55,15 @@ test("reviews exact time then reaches email verification", async ({ page }) => {
   );
   await page.getByRole("button", { name: "Create reminder" }).click();
   await expect(
-    page.getByRole("heading", { name: "Check your email" }),
+    page.getByRole("heading", { name: "Your reminder is active" }),
   ).toBeVisible();
+  await expect(page.getByText(/unsubscribe controls/i)).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Download one-time calendar event" }),
   ).toBeVisible();
-  await page
-    .getByRole("link", { name: "Open local verification preview" })
-    .click();
-  await page.getByRole("button", { name: "Verify email" }).click();
   await expect(
-    page.getByRole("heading", { name: "Reminder activated" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Subscribe to my reminders calendar" }),
-  ).toHaveAttribute("href", /^webcal:\/\//u);
-  await page.getByText("Using Google Calendar?").click();
-  const feedUrl = await page
-    .getByRole("link", { name: "private calendar address" })
-    .getAttribute("href");
-  expect(feedUrl).not.toBeNull();
-  const feedResponse = await page.request.get(feedUrl ?? "");
-  expect(feedResponse.status()).toBe(200);
-  expect(feedResponse.headers()["content-type"]).toContain("text/calendar");
-  expect(await feedResponse.text()).toContain("SUMMARY:Prepare launch notes");
+    page.getByRole("link", { name: "Manage reminder" }),
+  ).toHaveAttribute("href", /\/manage\//u);
 });
 
 test("moves focus to actionable validation feedback", async ({ page }) => {

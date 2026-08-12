@@ -17,6 +17,31 @@
   white-space: nowrap;
 }
 
+.accountNav {
+  align-items: center;
+  display: flex;
+  gap: var(--space-1);
+}
+
+.accountNav a {
+  border-radius: var(--radius-small);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.4rem 0.6rem;
+  text-decoration: none;
+}
+
+.accountNav a:hover {
+  background: color-mix(in srgb, var(--color-signal) 7%, var(--color-surface));
+  color: var(--color-signal);
+}
+
+.accountNav a[aria-current="page"] {
+  background: color-mix(in srgb, var(--color-signal) 8%, var(--color-surface));
+  color: var(--color-signal);
+}
+
 .authLink,
 .utilityLink,
 .logoutButton {
@@ -58,6 +83,17 @@
   .context,
   .identity {
     display: none;
+  }
+
+  .accountNav {
+    flex-basis: 100%;
+    order: 3;
+    width: 100%;
+  }
+
+  .accountNav a {
+    flex: 1;
+    text-align: center;
   }
 
   .utilityLink,

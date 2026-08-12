@@ -20,12 +20,12 @@ export default function UnsubscribeRoute({ actionData }: Route.ComponentProps) {
       <h1>{done ? "You are unsubscribed" : "Stop reminder emails"}</h1>
       <p>
         {done
-          ? "This recipient will not receive further reminder delivery."
-          : "This also cancels the reminder linked to this email."}
+          ? "This address will not receive future email reminders from any creator."
+          : "This blocks all future Reminders.work email delivery to this address and also cancels the reminder linked to this email. A reminder creator cannot reverse this choice."}
       </p>
       {!done ? (
         <Form method="post">
-          <button type="submit">Unsubscribe</button>
+          <button type="submit">Stop all reminder emails</button>
         </Form>
       ) : null}
     </main>

@@ -4,6 +4,7 @@ import type { PushSubscriptionInput } from "../../application/contracts/push-sub
 import type { ComposerActionData } from "../features/reminder-composer/ReminderComposer";
 import { ReminderComposer } from "../features/reminder-composer/ReminderComposer";
 import { applicationServicesContext } from "../server-context";
+import { authenticatedUser } from "../require-auth.server";
 import { TimeRail } from "../ui/TimeRail";
 import { SiteHeader } from "../ui/SiteHeader";
 import type { Route } from "./+types/home";
@@ -124,12 +125,15 @@ export async function action({
   context,
 }: Route.ActionArgs): Promise<ComposerActionData | null> {
   const form = await request.formData();
-  return handleComposerAction(form, context.get(applicationServicesContext));
+  const services = context.get(applicationServicesContext);
+  const user = await authenticatedUser(request, services);
+  return handleComposerAction(form, services, user?.id);
 }
 
 export async function handleComposerAction(
   form: FormData,
   services: ApplicationServices,
+  ownerUserId?: string,
 ): Promise<ComposerActionData | null> {
   const intentValue = form.get("intent");
   const intent = typeof intentValue === "string" ? intentValue : "review";
@@ -153,34 +157,20 @@ export async function handleComposerAction(
         };
   }
 
-  const result = await services.createReminder(draft);
+  const result = await services.createReminder(draft, ownerUserId);
   if (result.ok) {
     const calendar = calendarFromDraft(draft, services);
-    if (result.data.state === "active") {
-      return {
-        stage: "created",
-        result: result.data,
-        ...(calendar === undefined
-          ? {}
-          : {
-              calendar: {
-                ...calendar,
-                managePath: `/manage/${result.data.manageToken}`,
-              },
-            }),
-      };
-    }
     return {
       stage: "created",
-      result: {
-        state: result.data.state,
-        maskedRecipient: result.data.maskedRecipient,
-        expiresAt: result.data.expiresAt,
-        ...(services.showLocalVerificationPreview
-          ? { verificationToken: result.data.verificationToken }
-          : {}),
-      },
-      ...(calendar === undefined ? {} : { calendar }),
+      result: result.data,
+      ...(calendar === undefined
+        ? {}
+        : {
+            calendar: {
+              ...calendar,
+              managePath: `/manage/${result.data.manageToken}`,
+            },
+          }),
     };
   }
 
@@ -233,7 +223,7 @@ export default function Home({ actionData }: Route.ComponentProps) {
           </p>
           <ul className="trust-list desktop-only" aria-label="Product promises">
             <li>No account required</li>
-            <li>Browser or verified email delivery</li>
+            <li>Browser or direct email delivery</li>
             <li>Cancel or unsubscribe in one click</li>
           </ul>
         </div>

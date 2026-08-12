@@ -23,6 +23,16 @@ export class D1TokenPort implements TokenPort {
     return token;
   }
 
+  async revoke(token: string, purpose: TokenClaims["purpose"]): Promise<void> {
+    const hash = await hashOpaqueToken(token);
+    await this.database
+      .prepare(
+        "DELETE FROM reminder_tokens WHERE token_hash = ? AND purpose = ?",
+      )
+      .bind(hash, purpose)
+      .run();
+  }
+
   async consume(
     token: string,
     purpose: TokenClaims["purpose"],

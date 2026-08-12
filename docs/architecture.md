@@ -524,17 +524,12 @@ sequenceDiagram
     participant U as User
     participant A as App Worker
     participant D as D1
-    participant Q as Auth Queue
-    participant E as Email Service
     participant W as Workflow
 
     U->>A: create reminder + Turnstile
-    A->>A: validate input, zone, quota, captcha
-    A->>D: transaction: pending reminder + token
-    A->>Q: enqueue verification email
-    Q->>E: env.EMAIL.send()
-    U->>A: open verification link
-    A->>D: consume token + activate + outbox
+    A->>A: validate input, zone, quota, captcha, suppression
+    A->>D: reserve hashed actor/recipient quota
+    A->>D: persist active reminder + outbox
     A->>W: create reminderId:v1
     W->>W: sleepUntil(due)
     W->>D: reload status/version
@@ -547,12 +542,13 @@ sequenceDiagram
 2. 若 cancelled、paused、completed、version mismatch，安全退出。
 3. 幂等创建 Occurrence，并写入 enqueue outbox。
 4. 发送 Queue 消息；成功后完成 outbox。
-5. Consumer 按 target 条件 claim Occurrence，重新检查 suppression。
+5. Consumer 按 target 条件 claim Occurrence，重新检查 recipient-owned suppression。
 6. Email target 调用 Email Service；Web Push target 使用 VAPID 加密后调用订阅 endpoint。
 7. `web_push_email_fallback` 仅在 Push 未成功时发送 Email；各 target 独立去重。
 8. Push endpoint 返回 `404/410` 时撤销订阅且不重试；瞬时失败由 Queue 重试并最终进入 DLQ。
 9. accepted 后记录 Delivery 状态；Email Event 再更新 delivered、deferred、bounced 或 complained。
-10. recurring 计算下一次；one-time 等待用户确认策略或完成。
+10. 每封邮件区分“管理当前提醒”和“拒收该地址的全部未来邮件”；后者不可由创建者恢复。
+11. recurring 计算下一次；one-time 等待用户确认策略或完成。
 
 ### 9.2.1 浏览器订阅与测试通知
 
@@ -657,6 +653,10 @@ type ReminderPreset = {
 - action URL 只允许 `https`，邮件中清楚显示目标域名。
 - 每封邮件包含取消、全部退订、隐私和举报入口。
 - SPF、DKIM、DMARC 使用 `send.reminders.work`。
+- `email-sending-events` Queue 消费 Cloudflare Email Sending 的 bounce / complaint
+  事件；仅 hard bounce 和 complaint 写入 D1 suppression，soft bounce 不屏蔽。
+- 新 HMAC recipient ref 与历史 SHA-256 recipient ref 同时写入 suppression，以便迁移期
+  内现有 Reminder 和已保存地址都能立即反映屏蔽状态。
 - hard bounce、complaint 和 unsubscribe 在发送前同步检查。
 
 ### 11.3 Web 安全
@@ -935,7 +935,7 @@ Review 页面确认精确时间。
 
 - Unit：状态机、下一次时间、DST、lead offsets、until_done、模板转义。
 - Integration：D1 batch 回滚、idempotency、outbox、Queue 重复、Email Event 乱序。
-- E2E：匿名创建→验证→送达→done/snooze/unsubscribe。
+- E2E：匿名创建→直接激活→送达→done/snooze/unsubscribe。
 - Failure injection：Workflow 创建失败、consumer 发送前/后崩溃、Email 429/5xx/timeout。
 - SEO：SSR HTML、canonical、sitemap、noindex、structured data。
 - Release gate：lint、typecheck、unit、integration、E2E、migration dry-run、staging synthetic 全通过。

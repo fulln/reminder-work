@@ -6,8 +6,9 @@ Free online reminders for tasks, meetings, and deadlines.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Reminders.work is a focused, install-free reminder service. It lets people create an
-email reminder from the web, verify the recipient, receive it at the correct local
-time, and manage it through secure links.
+email reminder from the web, receive it at the correct local time, and manage it
+through secure links. Email reminders are activated immediately; recipients retain
+an address-wide opt-out that reminder creators cannot reverse.
 
 ## Capabilities
 
@@ -15,6 +16,8 @@ time, and manage it through secure links.
 - Daily, weekly, and monthly recurrence
 - Meeting, deadline, and follow-up presets
 - Complete, snooze, reschedule, cancel, and unsubscribe flows
+- Direct email scheduling with Turnstile, privacy-preserving rate limits, and
+  recipient-controlled suppression
 - IANA time-zone and daylight-saving-time handling
 - English-first SEO pages with Chinese routes under `/zh/*`
 - Keyboard, reduced-motion, mobile, and WCAG-oriented interaction coverage
@@ -28,7 +31,8 @@ The application is a Cloudflare-native modular monolith:
 - D1 as the source of truth
 - Workflows for durable scheduling
 - Queues for delivery retries and idempotency
-- Cloudflare Email Service for reminder delivery
+- Cloudflare Email Service for reminder delivery, with hard-bounce and complaint
+  events synchronized back into D1 recipient suppression
 - Turnstile for abuse prevention
 - `fl-user-auth` through a Cloudflare Worker Service Binding for Google and
   GitHub OAuth, site-bound sessions, and logout revocation

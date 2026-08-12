@@ -2,7 +2,12 @@ import type {
   ContentProtector,
   ProtectedContent,
 } from "../../../application/ports/content-protector";
-import { decryptJson, encryptJson, stableDigest } from "./encrypted-json";
+import {
+  decryptJson,
+  encryptJson,
+  keyedDigest,
+  stableDigest,
+} from "./encrypted-json";
 
 export class WebCryptoContentProtector implements ContentProtector {
   constructor(private readonly keyMaterial: string) {}
@@ -13,7 +18,8 @@ export class WebCryptoContentProtector implements ContentProtector {
     recipientIdentity: string,
   ): Promise<ProtectedContent> {
     return {
-      recipientRef: await stableDigest(recipientIdentity),
+      recipientRef: await keyedDigest(recipientIdentity, this.keyMaterial),
+      legacyRecipientRef: await stableDigest(recipientIdentity),
       ciphertext: await encryptJson(
         {
           title,

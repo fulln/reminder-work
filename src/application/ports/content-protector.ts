@@ -1,5 +1,6 @@
 export interface ProtectedContent {
   readonly recipientRef: string;
+  readonly legacyRecipientRef?: string;
   readonly ciphertext: string;
 }
 

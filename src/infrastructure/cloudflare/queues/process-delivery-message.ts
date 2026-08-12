@@ -1,9 +1,9 @@
 import type { ContentProtector } from "../../../application/ports/content-protector";
+import type { ReminderEmailPort } from "../../../application/ports/email-delivery";
 import type { ReminderRepository } from "../../../application/ports/reminder-repository";
 import type { SuppressionRepository } from "../../../application/ports/suppression-repository";
 import type { TokenPort } from "../../../application/ports/token";
 import type { DeliveryClaimRepository } from "../d1/delivery-claim-repository";
-import type { ReminderEmailPort } from "../email/email-service-adapter";
 import type { PushSubscriptionRepository } from "../../../application/ports/push-subscription-repository";
 import type { WebPushDeliveryPort } from "../../../application/ports/web-push-delivery";
 import type { SafeLogger } from "../observability/redacted-logger";

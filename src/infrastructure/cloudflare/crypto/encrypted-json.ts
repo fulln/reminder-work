@@ -66,3 +66,22 @@ export async function stableDigest(value: string): Promise<string> {
   );
   return toBase64(new Uint8Array(digest));
 }
+
+export async function keyedDigest(
+  value: string,
+  keyMaterial: string,
+): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(keyMaterial),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const digest = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(value),
+  );
+  return toBase64(new Uint8Array(digest));
+}

@@ -26,7 +26,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
         headers: privateHeaders,
       });
     }
-    return redirect("/", {
+    return redirect("/reminders", {
       headers: {
         ...privateHeaders,
         "Set-Cookie": createAuthSessionCookie({

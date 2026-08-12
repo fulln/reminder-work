@@ -86,12 +86,12 @@ describe("private calendar feed", () => {
             .fn()
             .mockResolvedValueOnce("manage-token")
             .mockResolvedValueOnce("unsubscribe-token"),
-          resolve: vi.fn(),
-          consume: vi.fn().mockResolvedValue({
+          resolve: vi.fn().mockResolvedValue({
             reminderId: reminder.id,
             purpose: "verify",
             expiresAt: "2026-08-11T00:30:00Z",
           }),
+          consume: vi.fn(),
         },
         scheduler: { schedule: vi.fn().mockResolvedValue(undefined) },
         calendarFeeds,
@@ -114,5 +114,119 @@ describe("private calendar feed", () => {
           "webcal://reminders.work/calendar/private-feed-token.ics",
       },
     });
+  });
+
+  it("marks an owned email identity verified when reminder verification succeeds", async () => {
+    const markVerified = vi.fn().mockResolvedValue(true);
+    const result = await verifyReminder(
+      {
+        clock: { now: () => new Date("2026-08-11T00:00:00Z") },
+        reminders: {
+          create: vi.fn(),
+          findById: vi
+            .fn()
+            .mockResolvedValue({ ...reminder, ownerUserId: "user-1" }),
+          save: vi.fn().mockResolvedValue(true),
+        },
+        tokens: {
+          issue: vi
+            .fn()
+            .mockResolvedValueOnce("manage-token")
+            .mockResolvedValueOnce("unsubscribe-token"),
+          resolve: vi.fn().mockResolvedValue({
+            reminderId: reminder.id,
+            purpose: "verify",
+            expiresAt: "2026-08-11T00:30:00Z",
+          }),
+          consume: vi.fn(),
+        },
+        scheduler: { schedule: vi.fn().mockResolvedValue(undefined) },
+        calendarFeeds: {
+          issue: vi.fn().mockResolvedValue("private-feed-token"),
+          findReminders: vi.fn(),
+        },
+        emailIdentities: {
+          remember: vi.fn(),
+          forget: vi.fn(),
+          createPending: vi.fn(),
+          findById: vi.fn(),
+          findByOwner: vi.fn(),
+          findByOwnerAndEmail: vi.fn(),
+          findByOwnerAndRecipientRef: vi.fn().mockResolvedValue({
+            id: "identity-1",
+            ownerUserId: "user-1",
+            recipientRef: "recipient-ref",
+            email: "owner@example.com",
+            status: "pending_verification",
+            deliverySuppressed: false,
+            activeReminderCount: 0,
+            createdAt: "2026-08-10T00:00:00.000Z",
+            updatedAt: "2026-08-10T00:00:00.000Z",
+            verifiedAt: null,
+          }),
+          markVerified,
+        },
+        appOrigin: "https://reminders.work",
+      },
+      "verification-token",
+      "request-2",
+    );
+
+    expect(result.ok).toBe(true);
+    expect(markVerified).toHaveBeenCalledWith(
+      "user-1",
+      "identity-1",
+      "2026-08-11T00:00:00.000Z",
+    );
+  });
+
+  it("does not activate or consume the token when owned identity verification fails", async () => {
+    const save = vi.fn().mockResolvedValue(true);
+    const consume = vi.fn();
+    const result = await verifyReminder(
+      {
+        clock: { now: () => new Date("2026-08-11T00:00:00Z") },
+        reminders: {
+          create: vi.fn(),
+          findById: vi
+            .fn()
+            .mockResolvedValue({ ...reminder, ownerUserId: "user-1" }),
+          save,
+        },
+        tokens: {
+          issue: vi.fn(),
+          resolve: vi.fn().mockResolvedValue({
+            reminderId: reminder.id,
+            purpose: "verify",
+            expiresAt: "2026-08-11T00:30:00Z",
+          }),
+          consume,
+        },
+        scheduler: { schedule: vi.fn() },
+        calendarFeeds: { issue: vi.fn(), findReminders: vi.fn() },
+        emailIdentities: {
+          remember: vi.fn(),
+          forget: vi.fn(),
+          createPending: vi.fn(),
+          findById: vi.fn(),
+          findByOwner: vi.fn(),
+          findByOwnerAndEmail: vi.fn(),
+          findByOwnerAndRecipientRef: vi
+            .fn()
+            .mockRejectedValue(new Error("database unavailable")),
+          markVerified: vi.fn(),
+        },
+        appOrigin: "https://reminders.work",
+      },
+      "verification-token",
+      "request-3",
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "VERIFICATION_RETRYABLE", retryable: true },
+    });
+    expect(save).not.toHaveBeenCalled();
+    expect(consume).not.toHaveBeenCalled();
   });
 });

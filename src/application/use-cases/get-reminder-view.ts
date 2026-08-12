@@ -6,8 +6,15 @@ import type { ReminderRepository } from "../ports/reminder-repository";
 import type { TokenPort } from "../ports/token";
 import type { ReminderStatus } from "../../domain/reminder/reminder";
 import type { ReminderSchedule } from "../../domain/reminder/schedule";
-
-export type ReminderAction = "complete" | "snooze" | "reschedule" | "cancel";
+import {
+  availableReminderActions,
+  type ReminderAction,
+} from "./manage-reminder/reminder-management";
+import { maskEmail } from "../support/email-address";
+export {
+  availableReminderActions,
+  type ReminderAction,
+} from "./manage-reminder/reminder-management";
 
 export interface ReminderView {
   readonly title: string;
@@ -15,6 +22,8 @@ export interface ReminderView {
   readonly status: ReminderStatus;
   readonly schedule: ReminderSchedule;
   readonly actions: readonly ReminderAction[];
+  readonly deliveryLabel?: string;
+  readonly maskedRecipient?: string;
 }
 
 export interface ReminderViewDependencies {
@@ -22,14 +31,6 @@ export interface ReminderViewDependencies {
   readonly reminders: ReminderRepository;
   readonly tokens: TokenPort;
   readonly contentProtector: ContentProtector;
-}
-
-export function availableReminderActions(
-  status: ReminderStatus,
-): readonly ReminderAction[] {
-  return status === "active" || status === "snoozed"
-    ? ["complete", "snooze", "reschedule", "cancel"]
-    : [];
 }
 
 export async function getReminderView(
@@ -57,6 +58,16 @@ export async function getReminderView(
       status: reminder.status,
       schedule: reminder.schedule,
       actions: availableReminderActions(reminder.status),
+      deliveryLabel:
+        reminder.deliveryPlan.mode === "email"
+          ? "Email"
+          : reminder.deliveryPlan.mode === "web_push"
+            ? "Browser notification"
+            : "Browser notification + email fallback",
+      maskedRecipient:
+        content.recipientEmail === undefined
+          ? "This browser"
+          : maskEmail(content.recipientEmail),
     });
   } catch {
     return unavailable(requestId);

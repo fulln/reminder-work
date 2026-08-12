@@ -1,4 +1,4 @@
-import { Form, useRouteLoaderData } from "react-router";
+import { Form, useLocation, useRouteLoaderData } from "react-router";
 
 import type { loader as rootLoader } from "../root";
 import styles from "./SiteHeader.module.css";
@@ -20,12 +20,33 @@ export function SiteHeader({
 }) {
   const rootData = useRouteLoaderData<typeof rootLoader>("root");
   const user = rootData?.user ?? null;
+  const location = useLocation();
 
   return (
     <header className="site-header">
       <a className="wordmark" href="/" aria-label="Reminders.work home">
         Reminders<span>.work</span>
       </a>
+      {!showAuthControl || user === null ? null : (
+        <nav className={styles.accountNav} aria-label="Account sections">
+          <a
+            href="/reminders"
+            aria-current={
+              location.pathname.startsWith("/reminders") ? "page" : undefined
+            }
+          >
+            Reminders
+          </a>
+          <a
+            href="/settings/email"
+            aria-current={
+              location.pathname === "/settings/email" ? "page" : undefined
+            }
+          >
+            Email &amp; delivery
+          </a>
+        </nav>
+      )}
       <div className={styles.controls}>
         {context ? <span className={styles.context}>{context}</span> : null}
         {utilityLink ? (

@@ -4,11 +4,8 @@ import type { Clock } from "../../ports/clock";
 import type { ReminderRepository } from "../../ports/reminder-repository";
 import type { SuppressionRepository } from "../../ports/suppression-repository";
 import type { TokenPort } from "../../ports/token";
-import { canTransition } from "../../../domain/reminder/reminder";
-import type {
-  Reminder,
-  ReminderStatus,
-} from "../../../domain/reminder/reminder";
+import type { ReminderStatus } from "../../../domain/reminder/reminder";
+import { transitionReminder } from "./reminder-management";
 
 export interface ManageReminderDependencies {
   readonly clock: Clock;
@@ -68,58 +65,12 @@ export async function manageReminder(
   }
 
   const now = dependencies.clock.now();
-  const next = transition(reminder, input, now);
+  const next = transitionReminder(reminder, input, now);
   if (next === null) return unavailable(requestId);
   const saved = await dependencies.reminders.save(next, input.expectedVersion);
   return saved
     ? success(requestId, { state: next.status, version: next.version })
     : conflict(requestId);
-}
-
-function transition(
-  reminder: Reminder,
-  input: ManageReminderInput,
-  now: Date,
-): Reminder | null {
-  const target: ReminderStatus =
-    input.action === "complete"
-      ? "completed"
-      : input.action === "cancel"
-        ? "cancelled"
-        : input.action === "snooze"
-          ? "snoozed"
-          : "active";
-  if (input.action !== "reschedule" && !canTransition(reminder.status, target))
-    return null;
-  if (
-    input.action === "reschedule" &&
-    !["active", "snoozed"].includes(reminder.status)
-  )
-    return null;
-
-  let schedule = reminder.schedule;
-  if (input.action === "snooze") {
-    const minutes = Math.min(10_080, Math.max(1, Math.trunc(input.minutes)));
-    schedule = {
-      ...schedule,
-      resolvedUtc: new Date(now.getTime() + minutes * 60_000).toISOString(),
-    };
-  } else if (input.action === "reschedule") {
-    const resolved = new Date(input.resolvedUtc);
-    if (Number.isNaN(resolved.getTime()) || resolved <= now) return null;
-    schedule = {
-      ...schedule,
-      resolvedUtc: resolved.toISOString(),
-      anchorLocal: input.anchorLocal,
-    };
-  }
-  return {
-    ...reminder,
-    status: target,
-    schedule,
-    version: reminder.version + 1,
-    updatedAt: now.toISOString(),
-  };
 }
 
 function unavailable(requestId: string): ActionResult<never> {

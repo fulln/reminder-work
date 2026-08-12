@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { availableReminderActions } from "../../src/application/use-cases/get-reminder-view";
+import { availableReminderActions } from "../../src/application/use-cases/manage-reminder/reminder-management";
 
 describe("reminder management policy", () => {
   it("offers active reminders all non-terminal management actions", () => {

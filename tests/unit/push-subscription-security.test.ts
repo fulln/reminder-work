@@ -4,6 +4,8 @@ import { pushSubscriptionSchema } from "../../src/application/contracts/push-sub
 import {
   decryptJson,
   encryptJson,
+  keyedDigest,
+  stableDigest,
 } from "../../src/infrastructure/cloudflare/crypto/encrypted-json";
 
 describe("push subscription boundary", () => {
@@ -38,5 +40,15 @@ describe("push subscription boundary", () => {
     await expect(decryptJson(ciphertext, "test-key-material")).resolves.toEqual(
       subscription,
     );
+  });
+
+  it("uses a keyed digest for correlatable private identifiers", async () => {
+    const value = "recipient@example.com";
+    const first = await keyedDigest(value, "first-secret-key");
+    const second = await keyedDigest(value, "second-secret-key");
+
+    expect(first).not.toBe(await stableDigest(value));
+    expect(first).not.toBe(second);
+    expect(first).toBe(await keyedDigest(value, "first-secret-key"));
   });
 });

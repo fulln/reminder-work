@@ -23,6 +23,7 @@ const transitions: Readonly<Record<ReminderStatus, readonly ReminderStatus[]>> =
 
 export interface Reminder {
   readonly id: string;
+  readonly ownerUserId?: string | null;
   readonly version: number;
   readonly status: ReminderStatus;
   readonly schedule: ReminderSchedule;

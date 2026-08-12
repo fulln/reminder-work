@@ -71,7 +71,7 @@ a {
   align-items: center;
   display: flex;
   justify-content: space-between;
-  padding-block: var(--space-2) var(--space-5);
+  margin-bottom: var(--space-4);
 }
 
 .site-header p {
@@ -290,7 +290,7 @@ button:active {
 
   .site-header {
     flex-wrap: wrap;
-    padding-block: var(--space-1) var(--space-3);
+    margin-bottom: var(--space-3);
   }
 
   .site-header p {

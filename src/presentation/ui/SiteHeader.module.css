@@ -1,8 +1,31 @@
-.controls {
+.header {
+  background: color-mix(in srgb, var(--color-surface) 86%, transparent);
+  border: 0.0625rem solid
+    color-mix(in srgb, var(--color-border) 78%, transparent);
+  border-radius: 1rem;
+  box-shadow: 0 0.0625rem 0.125rem
+    color-mix(in srgb, var(--color-ink) 3%, transparent);
+  gap: var(--space-2);
+  min-height: 4.25rem;
+  padding: 0.625rem 0.75rem 0.625rem var(--space-2);
+}
+
+.navigation {
   align-items: center;
   display: flex;
   gap: var(--space-2);
+  justify-content: flex-end;
+  margin-left: auto;
   min-width: 0;
+}
+
+.controls {
+  align-items: center;
+  border-left: 0.0625rem solid var(--color-border);
+  display: flex;
+  gap: 0.625rem;
+  min-width: 0;
+  padding-left: var(--space-2);
 }
 
 .context {
@@ -10,8 +33,35 @@
 }
 
 .identity {
-  color: var(--color-muted);
-  max-width: 12rem;
+  align-items: center;
+  color: var(--color-ink);
+  display: inline-flex;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.avatar {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-signal) 10%, var(--color-surface));
+  border: 0.0625rem solid
+    color-mix(in srgb, var(--color-signal) 18%, var(--color-border));
+  border-radius: 50%;
+  color: var(--color-signal);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-family: var(--font-display);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  height: 2rem;
+  justify-content: center;
+  letter-spacing: 0.02em;
+  width: 2rem;
+}
+
+.identityName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  max-width: 9rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -26,38 +76,37 @@
 .marketingNav {
   align-items: center;
   display: flex;
-  gap: var(--space-3);
-  margin-left: auto;
+  gap: 0.25rem;
 }
 
-.marketingNav a {
-  color: var(--color-muted);
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.marketingNav a:hover {
-  color: var(--color-signal);
-}
-
+.marketingNav a,
 .accountNav a {
-  border-radius: var(--radius-small);
+  border-radius: 0.625rem;
   color: var(--color-muted);
   font-size: 0.875rem;
   font-weight: 600;
-  padding: 0.4rem 0.6rem;
+  padding: 0.55rem 0.7rem;
   text-decoration: none;
+  transition:
+    background-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    transform var(--motion-fast) cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+.marketingNav a:hover,
 .accountNav a:hover {
   background: color-mix(in srgb, var(--color-signal) 7%, var(--color-surface));
   color: var(--color-signal);
 }
 
 .accountNav a[aria-current="page"] {
-  background: color-mix(in srgb, var(--color-signal) 8%, var(--color-surface));
+  background: color-mix(in srgb, var(--color-signal) 10%, var(--color-surface));
   color: var(--color-signal);
+}
+
+.marketingNav a:active,
+.accountNav a:active {
+  transform: scale(0.97);
 }
 
 .authLink,
@@ -81,11 +130,25 @@
 }
 
 .logoutButton {
-  background: transparent;
+  background: var(--color-surface);
+  border: 0.0625rem solid var(--color-border);
+  border-radius: 0.625rem;
   color: var(--color-muted);
-  min-height: auto;
-  padding: 0;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.7rem;
+  transition:
+    border-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    transform var(--motion-fast) cubic-bezier(0.23, 1, 0.32, 1);
   width: auto;
+}
+
+.logoutButton:hover {
+  border-color: color-mix(
+    in srgb,
+    var(--color-signal) 35%,
+    var(--color-border)
+  );
 }
 
 .logoutButton:hover,
@@ -93,23 +156,47 @@
   color: var(--color-signal);
 }
 
+@media (max-width: 64rem) {
+  .header[data-authenticated="true"] .marketingNav {
+    display: none;
+  }
+}
+
 @media (max-width: 48rem) {
-  .controls {
+  .header {
+    border-radius: 0.875rem;
     gap: var(--space-1);
+    padding: 0.5rem;
   }
 
-  .context,
-  .identity {
+  .controls {
+    border-left: 0;
+    gap: var(--space-1);
+    padding-left: 0;
+  }
+
+  .context {
     display: none;
   }
 
-  .accountNav {
+  .navigation {
+    border-top: 0.0625rem solid var(--color-border);
     flex-basis: 100%;
+    margin-left: 0;
     order: 3;
+    padding-top: 0.5rem;
+    width: 100%;
+  }
+
+  .accountNav {
     width: 100%;
   }
 
   .marketingNav {
+    display: none;
+  }
+
+  .header[data-authenticated="false"] .navigation {
     display: none;
   }
 
@@ -122,5 +209,11 @@
   .authLink,
   .logoutButton {
     font-size: 0.8125rem;
+  }
+}
+
+@media (max-width: 28rem) {
+  .identityName {
+    display: none;
   }
 }

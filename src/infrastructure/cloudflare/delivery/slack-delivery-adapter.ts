@@ -26,7 +26,10 @@ function isSlackWebhookUrl(value: string): boolean {
 }
 
 export class SlackDeliveryAdapter implements SlackDeliveryPort {
-  constructor(private readonly fetcher: typeof fetch = fetch) {}
+  constructor(
+    private readonly fetcher: typeof fetch = (input, init) =>
+      fetch(input, init),
+  ) {}
 
   async send(
     credential: SlackDestinationCredential,
@@ -40,7 +43,7 @@ export class SlackDeliveryAdapter implements SlackDeliveryPort {
     try {
       response = await this.fetcher(credential.webhookUrl, {
         method: "POST",
-        redirect: "error",
+        redirect: "manual",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: `${title} — due now`,
@@ -71,7 +74,11 @@ export class SlackDeliveryAdapter implements SlackDeliveryPort {
         }),
         signal: AbortSignal.timeout(10_000),
       });
-    } catch {
+    } catch (error) {
+      console.warn("[slack-delivery] network_failed", {
+        reason:
+          error instanceof Error ? `${error.name}:${error.message}` : "unknown",
+      });
       throw new ExternalDeliveryError("SLACK_NETWORK_FAILED", true);
     }
     if (response.ok) return;

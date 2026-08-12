@@ -3,6 +3,7 @@ import type { SlackDestinationCredential } from "../../../application/ports/deli
 
 interface SlackOAuthResponse {
   readonly ok?: boolean;
+  readonly error?: string;
   readonly access_token?: string;
   readonly team?: { readonly id?: string; readonly name?: string };
   readonly incoming_webhook?: {
@@ -12,13 +13,21 @@ interface SlackOAuthResponse {
   };
 }
 
+export class SlackOAuthExchangeError extends Error {
+  constructor(readonly reason: string) {
+    super("Slack OAuth exchange failed.");
+    this.name = "SlackOAuthExchangeError";
+  }
+}
+
 export class SlackOAuthClient implements SlackOAuthPort {
   readonly available: boolean;
 
   constructor(
     private readonly clientId: string | undefined,
     private readonly clientSecret: string | undefined,
-    private readonly fetcher: typeof fetch = fetch,
+    private readonly fetcher: typeof fetch = (input, init) =>
+      fetch(input, init),
   ) {
     this.available =
       clientId !== undefined &&
@@ -54,8 +63,8 @@ export class SlackOAuthClient implements SlackOAuthPort {
       throw new Error("SLACK_NOT_CONFIGURED");
     }
     const body = new URLSearchParams({
-      client_id: this.clientId,
-      client_secret: this.clientSecret,
+      client_id: this.clientId.trim(),
+      client_secret: this.clientSecret.trim(),
       code: input.code,
       redirect_uri: input.redirectUri,
     });
@@ -77,7 +86,9 @@ export class SlackOAuthClient implements SlackOAuthPort {
       webhook?.url === undefined ||
       webhook.channel_id === undefined
     ) {
-      throw new Error("SLACK_OAUTH_EXCHANGE_FAILED");
+      throw new SlackOAuthExchangeError(
+        payload.error ?? `http_${String(response.status)}`,
+      );
     }
     const webhookUrl = new URL(webhook.url);
     if (

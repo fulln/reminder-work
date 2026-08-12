@@ -34,7 +34,10 @@ export async function signWebhookPayload(
 }
 
 export class SignedWebhookDeliveryAdapter implements WebhookDeliveryPort {
-  constructor(private readonly fetcher: typeof fetch = fetch) {}
+  constructor(
+    private readonly fetcher: typeof fetch = (input, init) =>
+      fetch(input, init),
+  ) {}
 
   async send(
     credential: WebhookDestinationCredential,
@@ -50,7 +53,7 @@ export class SignedWebhookDeliveryAdapter implements WebhookDeliveryPort {
     try {
       response = await this.fetcher(url, {
         method: "POST",
-        redirect: "error",
+        redirect: "manual",
         headers: {
           "Content-Type": "application/json",
           "User-Agent": "Reminders.work-Webhook/1.0",

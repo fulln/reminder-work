@@ -327,7 +327,16 @@ export async function finishSlackConnection(
       code: input.code,
       redirectUri: dependencies.redirectUri,
     });
-  } catch {
+  } catch (error) {
+    console.warn("[slack-oauth] exchange_failed", {
+      reason:
+        error instanceof Error && "reason" in error
+          ? String(error.reason)
+          : error instanceof Error
+            ? `${error.name}:${error.message}`
+            : "unknown",
+      requestId,
+    });
     return failure(requestId, {
       code: "SLACK_OAUTH_EXCHANGE_FAILED",
       retryable: true,

@@ -44,6 +44,7 @@ describe("signed webhook delivery", () => {
     const [, init] = fetcher.mock.calls[0] as [string, RequestInit];
     const headers = new Headers(init.headers);
     expect(init.body).toBe(JSON.stringify(event));
+    expect(init.redirect).toBe("manual");
     expect(headers.get("X-Reminders-Event")).toBe("reminder.due");
     expect(headers.get("X-Reminders-Signature")).toMatch(/^v1=[a-f0-9]{64}$/);
   });
@@ -86,6 +87,7 @@ describe("Slack delivery", () => {
     const [url, init] = fetcher.mock.calls[0] as [string, RequestInit];
     if (typeof init.body !== "string") throw new Error("Slack body missing");
     expect(url).toBe("https://hooks.slack.com/services/T/B/S");
+    expect(init.redirect).toBe("manual");
     expect(init.body).toContain("Open reminder");
     expect(init.body).toContain(event.reminder.manageUrl);
   });
@@ -149,5 +151,37 @@ describe("Slack delivery", () => {
 
   it("treats blank OAuth credentials as unavailable", () => {
     expect(new SlackOAuthClient("", "").available).toBe(false);
+  });
+
+  it("trims configured credentials before exchanging the OAuth code", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      Response.json({
+        ok: true,
+        access_token: "token",
+        team: { id: "T1", name: "Acme" },
+        incoming_webhook: {
+          url: "https://hooks.slack.com/services/T/B/S",
+          channel: "#ops",
+          channel_id: "C1",
+        },
+      }),
+    );
+    const client = new SlackOAuthClient(
+      " client-id ",
+      " client-secret ",
+      fetcher,
+    );
+
+    await client.exchangeCode({
+      code: "code",
+      redirectUri: "https://reminders.work/integrations/slack/callback",
+    });
+
+    const [, init] = fetcher.mock.calls[0] as [string, RequestInit];
+    if (!(init.body instanceof URLSearchParams)) {
+      throw new Error("Slack OAuth form body missing");
+    }
+    expect(init.body.get("client_id")).toBe("client-id");
+    expect(init.body.get("client_secret")).toBe("client-secret");
   });
 });

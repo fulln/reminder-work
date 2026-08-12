@@ -4,7 +4,7 @@ import { reviewReminder } from "../../src/application/use-cases/review-reminder"
 import {
   draftFromForm,
   handleComposerAction,
-} from "../../src/presentation/routes/home";
+} from "../../src/presentation/features/reminder-composer/composer-action.server";
 import type { ApplicationServices } from "../../src/presentation/server-context";
 
 describe("reviewReminder", () => {

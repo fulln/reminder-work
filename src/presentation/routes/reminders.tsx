@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { Link } from "react-router";
 
 import { AccountShell } from "../features/account/AccountShell";
 import type { ReminderSchedule } from "../../domain/reminder/schedule";
 import styles from "../features/account/AccountWorkspace.module.css";
+import type { ComposerActionData } from "../features/reminder-composer/ReminderComposer";
+import { ReminderComposer } from "../features/reminder-composer/ReminderComposer";
+import { handleComposerAction } from "../features/reminder-composer/composer-action.server";
 import { requireAuthenticatedUser } from "../require-auth.server";
 import { applicationServicesContext } from "../server-context";
 import type { Route } from "./+types/reminders";
@@ -19,7 +23,22 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   return services.listOwnedReminders(user.id);
 }
 
-export default function RemindersRoute({ loaderData }: Route.ComponentProps) {
+export async function action({ request, context }: Route.ActionArgs) {
+  const services = context.get(applicationServicesContext);
+  const user = await requireAuthenticatedUser(request, services);
+  if (user instanceof Response) return user;
+  return handleComposerAction(await request.formData(), services, user.id);
+}
+
+export default function RemindersRoute({
+  loaderData,
+  actionData,
+}: Route.ComponentProps) {
+  const composerActionData = actionData as ComposerActionData | undefined;
+  const [composerOpen, setComposerOpen] = useState(
+    composerActionData !== undefined,
+  );
+
   return (
     <AccountShell>
       <div className={styles.headingRow}>
@@ -31,10 +50,37 @@ export default function RemindersRoute({ loaderData }: Route.ComponentProps) {
             completed.
           </p>
         </div>
-        <Link className={styles.primaryLink} to="/">
-          New reminder
-        </Link>
+        <button
+          className={styles.primaryLink}
+          type="button"
+          aria-expanded={composerOpen}
+          aria-controls="new-reminder"
+          onClick={() => {
+            setComposerOpen((open) => !open);
+          }}
+        >
+          {composerOpen ? "Close creator" : "New reminder"}
+        </button>
       </div>
+
+      {composerOpen ? (
+        <section
+          className={styles.composerPanel}
+          id="new-reminder"
+          aria-labelledby="new-reminder-title"
+        >
+          <div className={styles.composerPanelHeading}>
+            <div>
+              <p className="eyebrow">Create here</p>
+              <h2 id="new-reminder-title">New reminder</h2>
+            </div>
+            <p className={styles.muted}>
+              It will appear in this list as soon as it is created.
+            </p>
+          </div>
+          <ReminderComposer actionData={composerActionData} />
+        </section>
+      ) : null}
 
       {!loaderData.ok ? (
         <p className={styles.error} role="alert">

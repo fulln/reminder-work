@@ -2,6 +2,10 @@ display_information:
   name: Reminders.work
   description: Deliver scheduled Reminders.work notifications to a selected channel.
   background_color: "#2f5bff"
+features:
+  bot_user:
+    display_name: Reminders.work
+    always_online: false
 oauth_config:
   redirect_urls:
     - https://reminders.work/integrations/slack/callback

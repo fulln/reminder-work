@@ -26,6 +26,12 @@ export function SiteHeader({
   const rootData = useRouteLoaderData<typeof rootLoader>("root");
   const user = rootData?.user ?? null;
   const location = useLocation();
+  const visibleNavigation =
+    user === null
+      ? navigation
+      : navigation?.filter(
+          (item) => item.href !== "#delivery" && item.label !== "Delivery",
+        );
   const initials =
     user === null
       ? "U"
@@ -45,9 +51,10 @@ export function SiteHeader({
         Reminders<span>.work</span>
       </a>
       <div className={styles.navigation}>
-        {navigation === undefined ? null : (
+        {visibleNavigation === undefined ||
+        visibleNavigation.length === 0 ? null : (
           <nav className={styles.marketingNav} aria-label="Product">
-            {navigation.map((item) => (
+            {visibleNavigation.map((item) => (
               <a href={item.href} key={item.href}>
                 {item.label}
               </a>
@@ -94,23 +101,43 @@ export function SiteHeader({
             {locale === "zh-CN" ? "登录" : "Sign in"}
           </a>
         ) : (
-          <>
-            <span className={styles.identity} title={user.displayName}>
+          <details className={styles.accountMenu}>
+            <summary
+              className={styles.identity}
+              title={user.displayName}
+              aria-label={`Account menu for ${user.displayName}`}
+            >
               <span className={styles.avatar} aria-hidden="true">
                 {initials}
               </span>
               <span className={styles.identityName}>{user.displayName}</span>
-            </span>
-            <Form
-              className={styles.logoutForm}
-              method="post"
-              action="/auth/logout"
-            >
-              <button className={styles.logoutButton} type="submit">
-                {locale === "zh-CN" ? "退出" : "Sign out"}
-              </button>
-            </Form>
-          </>
+              <span className={styles.menuChevron} aria-hidden="true">
+                ▾
+              </span>
+            </summary>
+            <div className={styles.accountPopover}>
+              <div className={styles.accountSummary}>
+                <span className={styles.avatar} aria-hidden="true">
+                  {initials}
+                </span>
+                <span>
+                  <small>
+                    {locale === "zh-CN" ? "已登录" : "Signed in as"}
+                  </small>
+                  <strong>{user.displayName}</strong>
+                </span>
+              </div>
+              <Form
+                className={styles.logoutForm}
+                method="post"
+                action="/auth/logout"
+              >
+                <button className={styles.logoutButton} type="submit">
+                  {locale === "zh-CN" ? "退出登录" : "Sign out"}
+                </button>
+              </Form>
+            </div>
+          </details>
         )}
       </div>
     </header>

@@ -8,7 +8,13 @@ const slugs = [
   "deadline-reminder",
   "follow-up-reminder",
 ];
-const paths = ["/", ...slugs.flatMap((slug) => [`/${slug}`, `/zh/${slug}`])];
+const paths = [
+  "/",
+  "/about",
+  "/privacy",
+  "/contact",
+  ...slugs.flatMap((slug) => [`/${slug}`, `/zh/${slug}`]),
+];
 const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${paths.map((path) => `  <url><loc>https://reminders.work${path}</loc></url>`).join("\n")}

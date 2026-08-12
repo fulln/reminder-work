@@ -1,0 +1,45 @@
+.shell {
+  margin: 0 auto;
+  max-width: 64rem;
+  min-height: calc(100vh - 12rem);
+  padding: var(--space-3);
+}
+
+.article {
+  background: var(--color-surface);
+  border: 0.0625rem solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-instrument);
+  max-width: 48rem;
+  padding: clamp(var(--space-3), 5vw, var(--space-5));
+}
+
+.article h1 {
+  font-size: clamp(2.25rem, 6vw, 4.5rem);
+}
+
+.article h2 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  margin: var(--space-4) 0 var(--space-1);
+}
+
+.article p,
+.article li {
+  color: var(--color-muted);
+}
+
+.article ul {
+  padding-left: var(--space-3);
+}
+
+.updated {
+  font-family: var(--font-time);
+  font-size: 0.75rem;
+}
+
+@media (max-width: 48rem) {
+  .shell {
+    padding: var(--space-2);
+  }
+}

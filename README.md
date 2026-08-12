@@ -37,6 +37,11 @@ The application is a Cloudflare-native modular monolith:
 - `fl-user-auth` through a Cloudflare Worker Service Binding for Google and
   GitHub OAuth, site-bound sessions, and logout revocation
 
+Google AdSense is limited to the public capability pages. The reminder composer,
+account, management, verification, unsubscribe, calendar, and trust pages do not
+load the advertising runtime. The publisher declaration lives in `public/ads.txt`;
+consent messaging for regulated regions is configured in the AdSense console.
+
 Domain, application, infrastructure, and presentation boundaries are enforced in CI.
 The detailed design is available in [docs/architecture.md](docs/architecture.md), and
 the implementation specification lives in

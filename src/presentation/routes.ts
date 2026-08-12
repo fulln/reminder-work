@@ -15,6 +15,9 @@ export default [
   route("unsubscribe/:token", "routes/unsubscribe.tsx"),
   route("calendar.ics", "routes/calendar-export.ts"),
   route("calendar/:token", "routes/calendar-subscription.ts"),
+  route("about", "routes/about.tsx"),
+  route("privacy", "routes/privacy.tsx"),
+  route("contact", "routes/contact.tsx"),
   route(":capability", "routes/capabilities.tsx"),
   route("zh/:capability", "routes/zh-capabilities.tsx"),
 ] satisfies RouteConfig;

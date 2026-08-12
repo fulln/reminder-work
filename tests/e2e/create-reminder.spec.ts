@@ -426,4 +426,8 @@ test("keeps public purpose and labels in server HTML", async ({ request }) => {
   expect(html).toContain("Free online reminders");
   expect(html).toContain("What should we remind you about?");
   expect(html).toContain("Choose date &amp; time manually");
+  expect(html).toContain("Remember the work. Control the delivery.");
+  expect(html).toContain("View reminder management");
+  expect(html).toContain("View email &amp; delivery");
+  expect(html).toContain("Recipient control by design");
 });

@@ -3,6 +3,7 @@ import type { CalendarExportData } from "../../application/contracts/calendar-ex
 import type { PushSubscriptionInput } from "../../application/contracts/push-subscription";
 import type { ComposerActionData } from "../features/reminder-composer/ReminderComposer";
 import { ReminderComposer } from "../features/reminder-composer/ReminderComposer";
+import { HomeOverview } from "../features/home-overview/HomeOverview";
 import { applicationServicesContext } from "../server-context";
 import { authenticatedUser } from "../require-auth.server";
 import { TimeRail } from "../ui/TimeRail";
@@ -15,7 +16,7 @@ export const meta: Route.MetaFunction = () => [
   {
     name: "description",
     content:
-      "Create clear online reminders for tasks, meetings, and deadlines. Review the exact time before anything is sent.",
+      "Create and manage one-time or recurring reminders with direct email and browser delivery, precise time zones, and recipient controls.",
   },
 ];
 
@@ -200,7 +201,13 @@ export async function handleComposerAction(
 export default function Home({ actionData }: Route.ComponentProps) {
   return (
     <main id="main-content" className="landing-shell">
-      <SiteHeader context="Work remembers itself." />
+      <SiteHeader
+        navigation={[
+          { href: "#features", label: "Features" },
+          { href: "#how-it-works", label: "How it works" },
+          { href: "#delivery", label: "Email delivery" },
+        ]}
+      />
 
       <section className="hero" aria-labelledby="hero-title">
         <div className="hero-copy">
@@ -250,6 +257,7 @@ export default function Home({ actionData }: Route.ComponentProps) {
           </div>
         </div>
       </section>
+      <HomeOverview />
     </main>
   );
 }

@@ -23,6 +23,24 @@
   gap: var(--space-1);
 }
 
+.marketingNav {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+.marketingNav a {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.marketingNav a:hover {
+  color: var(--color-signal);
+}
+
 .accountNav a {
   border-radius: var(--radius-small);
   color: var(--color-muted);
@@ -89,6 +107,10 @@
     flex-basis: 100%;
     order: 3;
     width: 100%;
+  }
+
+  .marketingNav {
+    display: none;
   }
 
   .accountNav a {

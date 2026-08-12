@@ -5,11 +5,16 @@ import styles from "./SiteHeader.module.css";
 
 export function SiteHeader({
   context,
+  navigation,
   utilityLink,
   locale = "en",
   showAuthControl = true,
 }: {
   readonly context?: string;
+  readonly navigation?: readonly {
+    readonly href: string;
+    readonly label: string;
+  }[];
   readonly utilityLink?: {
     readonly href: string;
     readonly label: string;
@@ -27,6 +32,15 @@ export function SiteHeader({
       <a className="wordmark" href="/" aria-label="Reminders.work home">
         Reminders<span>.work</span>
       </a>
+      {navigation === undefined ? null : (
+        <nav className={styles.marketingNav} aria-label="Product">
+          {navigation.map((item) => (
+            <a href={item.href} key={item.href}>
+              {item.label}
+            </a>
+          ))}
+        </nav>
+      )}
       {!showAuthControl || user === null ? null : (
         <nav className={styles.accountNav} aria-label="Account sections">
           <a

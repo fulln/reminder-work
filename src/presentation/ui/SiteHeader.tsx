@@ -70,7 +70,7 @@ export function SiteHeader({
                 location.pathname === "/settings/email" ? "page" : undefined
               }
             >
-              Email &amp; delivery
+              Delivery
             </a>
           </nav>
         )}

@@ -129,7 +129,33 @@ export default function EmailSettingsRoute({
         </p>
       ) : null}
 
-      <section className={styles.channelSection} aria-labelledby="email-title">
+      <nav
+        className={styles.deliveryNav}
+        aria-label="Delivery settings sections"
+      >
+        <a href="#email-recipients">
+          <span>Email recipients</span>
+          <span className={styles.deliveryNavCount}>{identities.length}</span>
+        </a>
+        <a href="#slack">
+          <span>Slack</span>
+          <span className={styles.deliveryNavCount}>
+            {slackDestinations.length}
+          </span>
+        </a>
+        <a href="#webhooks">
+          <span>Webhooks</span>
+          <span className={styles.deliveryNavCount}>
+            {webhookDestinations.length}
+          </span>
+        </a>
+      </nav>
+
+      <section
+        className={styles.channelSection}
+        id="email-recipients"
+        aria-labelledby="email-title"
+      >
         <div className={styles.sectionHeading}>
           <p className="eyebrow">Personal delivery</p>
           <h2 id="email-title">Email recipients</h2>
@@ -198,6 +224,7 @@ export default function EmailSettingsRoute({
       ) : null}
 
       <DestinationSection
+        id="slack"
         eyebrow="Team delivery"
         title="Slack"
         description="Send reminders to a channel your team already follows. Each connection is tied to one Slack workspace and channel."
@@ -217,6 +244,7 @@ export default function EmailSettingsRoute({
       />
 
       <DestinationSection
+        id="webhooks"
         eyebrow="Developer delivery"
         title="Webhooks"
         description="Post signed reminder events to your own automation or service. Credentials are encrypted and never displayed again."
@@ -273,6 +301,7 @@ export default function EmailSettingsRoute({
 }
 
 function DestinationSection({
+  id,
   eyebrow,
   title,
   description,
@@ -281,6 +310,7 @@ function DestinationSection({
   action,
   children,
 }: {
+  readonly id: string;
   readonly eyebrow: string;
   readonly title: string;
   readonly description: string;
@@ -291,7 +321,11 @@ function DestinationSection({
 }) {
   const titleId = `${title.toLowerCase()}-title`;
   return (
-    <section className={styles.channelSection} aria-labelledby={titleId}>
+    <section
+      className={styles.channelSection}
+      id={id}
+      aria-labelledby={titleId}
+    >
       <div className={styles.sectionHeadingRow}>
         <div className={styles.sectionHeading}>
           <p className="eyebrow">{eyebrow}</p>
